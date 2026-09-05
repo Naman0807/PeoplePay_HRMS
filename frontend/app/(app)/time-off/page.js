@@ -45,8 +45,33 @@ export default function TimeOffPage() {
   const user = getUser();
   const canApprove = user && CAN_APPROVE_ROLES.includes(user.role);
 
+  const { data: leaveTypes } = useFetch("/api/leave-requests/types");
+  const selectedType = (leaveTypes || []).find(
+    (t) => String(t.id) === String(form.leave_type_id)
+  );
+  // "Other" is not self-explanatory, so a reason is required for it.
+  const reasonRequired = selectedType?.name === "Other";
+
   const url = employeeId ? `/api/leave-requests?employee_id=${employeeId}` : "/api/leave-requests";
   const { data, loading, error, refetch } = useFetch(url);
+
+  /** Whole days inclusive of both ends, matching the backend's own calculation. */
+  function daysBetween(from, to) {
+    if (!from || !to) return "";
+    const days = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+    return days > 0 ? String(days) : "";
+  }
+
+  // Changing either date refills the day count. It stays editable for half days and
+  // similar cases, and the backend derives it again if left blank.
+  function setDate(field, value) {
+    const next = { ...form, [field]: value };
+    next.number_of_days = daysBetween(
+      field === "date_from" ? value : form.date_from,
+      field === "date_to" ? value : form.date_to
+    );
+    setForm(next);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -120,18 +145,33 @@ export default function TimeOffPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && <ErrorBox message={formError} />}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field
-                label="Leave type ID"
-                type="number"
+              <Select
+                label="Leave type"
                 value={form.leave_type_id}
                 onChange={(v) => setForm({ ...form, leave_type_id: v })}
+                options={(leaveTypes || []).map((t) => ({
+                  value: String(t.id),
+                  label: t.requires_allocation ? t.name : `${t.name} (unpaid)`,
+                }))}
                 required
-                hint="Numeric ID of the leave type. There is no leave-types endpoint yet — check the seeded data for valid IDs."
               />
-              <Field label="Number of days" type="number" value={form.number_of_days} onChange={(v) => setForm({ ...form, number_of_days: v })} required />
-              <Field label="From" type="date" value={form.date_from} onChange={(v) => setForm({ ...form, date_from: v })} required />
-              <Field label="To" type="date" value={form.date_to} onChange={(v) => setForm({ ...form, date_to: v })} required />
-              <Field label="Reason" value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} />
+              <Field label="From" type="date" value={form.date_from} onChange={(v) => setDate("date_from", v)} required />
+              <Field label="To" type="date" value={form.date_to} onChange={(v) => setDate("date_to", v)} required />
+              <Field
+                label="Number of days"
+                type="number"
+                value={form.number_of_days}
+                onChange={(v) => setForm({ ...form, number_of_days: v })}
+                required
+                hint="Filled in from the dates. Edit it for a half day."
+              />
+              <Field
+                label={reasonRequired ? "Reason (required)" : "Reason"}
+                value={form.reason}
+                onChange={(v) => setForm({ ...form, reason: v })}
+                required={reasonRequired}
+                hint={reasonRequired ? "Say what this time off is for." : ""}
+              />
             </div>
             <PrimaryButton type="submit" disabled={submitting}>
               {submitting ? "Submitting…" : "Submit request"}
