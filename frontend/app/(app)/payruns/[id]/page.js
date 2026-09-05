@@ -110,7 +110,7 @@ export default function PayrunDetailPage() {
       </div>
 
       {payslips?.length > 0 && (
-        <Table headers={["Employee", "Payslip", "Gross", "Net", "Warning"]}>
+        <Table headers={["Employee", "Payslip", "Gross", "Net", "Warning", "Download"]}>
           {payslips.map((p) => (
             <tr key={p.id} className="border-t border-gray-100">
               <td className="px-4 py-2 text-gray-900">{employeeName(p.employee_id)}</td>
@@ -131,6 +131,16 @@ export default function PayrunDetailPage() {
                 ) : (
                   "—"
                 )}
+              </td>
+              <td className="px-4 py-2">
+                <a
+                  href={`${api.defaults.baseURL}/api/payslips/${p.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-gray-700 hover:underline"
+                >
+                  PDF
+                </a>
               </td>
             </tr>
           ))}
