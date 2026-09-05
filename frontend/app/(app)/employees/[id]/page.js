@@ -70,7 +70,7 @@ export default function EmployeeDetailPage() {
         <PageHeader
           title={employee.name}
           actions={
-            <Link href={`/employees/${id}/contracts`} className="text-sm font-medium text-gray-700 hover:underline">
+            <Link href={`/employees/${id}/contracts`} className="text-sm font-medium text-text-muted hover:underline">
               Contracts →
             </Link>
           }
@@ -81,7 +81,7 @@ export default function EmployeeDetailPage() {
           <ReadOnlyField label="Department" value={employee.department || "—"} />
           <ReadOnlyField label="Job title" value={employee.job_title || "—"} />
           <div>
-            <div className="text-xs font-medium text-gray-600">Status</div>
+            <div className="text-xs font-medium text-text-muted">Status</div>
             <div className="mt-1">
               <Badge variant={statusVariant(employee.status)}>{employee.status}</Badge>
             </div>
@@ -100,7 +100,7 @@ export default function EmployeeDetailPage() {
       <PageHeader
         title={employee.name}
         actions={
-          <Link href={`/employees/${id}/contracts`} className="text-sm font-medium text-gray-700 hover:underline">
+          <Link href={`/employees/${id}/contracts`} className="text-sm font-medium text-text-muted hover:underline">
             Contracts →
           </Link>
         }
@@ -136,8 +136,8 @@ export default function EmployeeDetailPage() {
 function ReadOnlyField({ label, value }) {
   return (
     <div>
-      <div className="text-xs font-medium text-gray-600">{label}</div>
-      <div className="mt-0.5 text-gray-900">{value}</div>
+      <div className="text-xs font-medium text-text-muted">{label}</div>
+      <div className="mt-0.5 text-text-primary">{value}</div>
     </div>
   );
 }

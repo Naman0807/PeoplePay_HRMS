@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import api from "@/lib/api";
-import { getUser } from "@/lib/auth";
 import { permissions } from "@/lib/permissions";
 import { useFetch } from "@/lib/useFetch";
 import {
@@ -22,17 +21,22 @@ import {
 } from "@/components/ui";
 
 const EMPTY_FORM = { leave_type_id: "", date_from: "", date_to: "", number_of_days: "", reason: "" };
-const CAN_APPROVE_ROLES = ["HR_MANAGER", "HR_PAYROLL_MANAGER", "ADMIN"];
 
 export default function TimeOffPage() {
   const perms = permissions();
+  // Everyone files for themselves only — HR can browse/approve anyone's requests
+  // (the employeeId filter below), but can never submit one under someone else's
+  // name. ADMIN has no linked employee record, so they can't file at all.
+  const ownEmployeeId = perms.user?.employee_id ? String(perms.user.employee_id) : null;
   const { data: employees, loading: empLoading, error: empError } = useFetch("/api/employees");
-  // An employee files only for themselves, so preselect them. Leaving this empty
-  // meant the form posted whichever person the dropdown happened to land on, and the
-  // API correctly refused it with 403.
-  const [employeeId, setEmployeeId] = useState(() =>
-    perms.isEmployee && perms.user?.employee_id ? String(perms.user.employee_id) : ""
-  );
+  // Employees only ever see their own requests, so preselect them. HR/approver
+  // roles default to "All employees" — they need the full queue, not just their own.
+  const [employeeId, setEmployeeId] = useState(() => (perms.isEmployee ? ownEmployeeId || "" : ""));
+  // The filter is for browsing/approving anyone's queue. Filing is only ever for
+  // yourself, so the moment the filter points at someone else, hide "Request leave"
+  // entirely rather than let it sit next to another person's name and file for you
+  // anyway — that reads as "filing as them" even though it never was.
+  const canFileNow = Boolean(ownEmployeeId) && (employeeId === "" || employeeId === ownEmployeeId);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -42,8 +46,9 @@ export default function TimeOffPage() {
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const user = getUser();
-  const canApprove = user && CAN_APPROVE_ROLES.includes(user.role);
+  // Matches the backend's actual APPROVER_ROLES (HR_MANAGER, plus ADMIN which
+  // bypasses every role check) — not a separately maintained list that can drift.
+  const canApprove = perms.canApproveLeave;
 
   const { data: leaveTypes } = useFetch("/api/leave-requests/types");
   const selectedType = (leaveTypes || []).find(
@@ -79,7 +84,7 @@ export default function TimeOffPage() {
     setFormError(null);
     try {
       await api.post("/api/leave-requests", {
-        employee_id: Number(employeeId),
+        employee_id: Number(ownEmployeeId),
         leave_type_id: Number(form.leave_type_id),
         date_from: form.date_from,
         date_to: form.date_to,
@@ -117,7 +122,7 @@ export default function TimeOffPage() {
       <PageHeader
         title="Time Off"
         actions={
-          employeeId && (
+          canFileNow && (
             <PrimaryButton onClick={() => setShowForm((v) => !v)}>
               {showForm ? "Cancel" : "Request leave"}
             </PrimaryButton>
@@ -128,19 +133,26 @@ export default function TimeOffPage() {
       <div className="mb-4 max-w-xs">
         {empLoading && <Loading />}
         {empError && <ErrorBox message={empError} />}
-        {/* Only staff who may file on someone else's behalf get to choose a person. */}
+        {/* Browsing/approving anyone's requests is separate from filing one — this
+            only ever changes which requests are listed below, never who a new
+            request is filed for (always the signed-in user, see ownEmployeeId). */}
         {employees && !perms.isEmployee && (
           <Select
-            label="Filter by employee (optional)"
+            label="Filter by employee"
             value={employeeId}
-            onChange={setEmployeeId}
-            options={employees.map((e) => ({ value: String(e.id), label: e.name }))}
+            onChange={(v) => {
+              setEmployeeId(v);
+              // Leaving the "self" filter closes any open request form — it would
+              // otherwise sit open next to a different person's name.
+              if (v !== "" && v !== ownEmployeeId) setShowForm(false);
+            }}
+            options={[{ value: "", label: "All employees" }, ...employees.map((e) => ({ value: String(e.id), label: e.name }))]}
             hint=""
           />
         )}
       </div>
 
-      {showForm && employeeId && (
+      {showForm && canFileNow && (
         <Card className="mb-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && <ErrorBox message={formError} />}
@@ -191,14 +203,27 @@ export default function TimeOffPage() {
       {!loading && !error && data?.length === 0 && <EmptyState message="No leave requests yet." />}
 
       {!loading && !error && data?.length > 0 && (
-        <Table headers={["From", "To", "Days", "Reason", "State", ...(canApprove ? ["Actions"] : [])]}>
+        <Table
+          headers={[
+            ...(!perms.isEmployee ? ["Employee"] : []),
+            "From",
+            "To",
+            "Days",
+            "Reason",
+            "State",
+            ...(canApprove ? ["Actions"] : []),
+          ]}
+        >
           {data.map((r) => (
-            <tr key={r.id} className="border-t border-gray-100">
-              <td className="px-4 py-2 text-gray-600">{r.date_from?.slice(0, 10)}</td>
-              <td className="px-4 py-2 text-gray-600">{r.date_to?.slice(0, 10)}</td>
-              <td className="px-4 py-2 text-gray-600">{r.number_of_days}</td>
-              <td className="px-4 py-2 text-gray-600">{r.reason || "—"}</td>
-              <td className="px-4 py-2 text-gray-600">
+            <tr key={r.id}>
+              {!perms.isEmployee && (
+                <td className="px-4 py-2 font-medium text-text-primary">{r.employee?.name || "—"}</td>
+              )}
+              <td className="px-4 py-2 text-text-muted">{r.date_from?.slice(0, 10)}</td>
+              <td className="px-4 py-2 text-text-muted">{r.date_to?.slice(0, 10)}</td>
+              <td className="px-4 py-2 text-text-muted">{r.number_of_days}</td>
+              <td className="px-4 py-2 text-text-muted">{r.reason || "—"}</td>
+              <td className="px-4 py-2 text-text-muted">
                 <Badge variant={statusVariant(r.state)}>{r.state}</Badge>
               </td>
               {canApprove && (
@@ -208,14 +233,14 @@ export default function TimeOffPage() {
                       <button
                         disabled={actingId === r.id}
                         onClick={() => setConfirm({ id: r.id, action: "approve" })}
-                        className="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-200 disabled:opacity-50"
+                        className="rounded bg-status-success/20 px-2 py-1 text-xs font-medium text-status-success transition-colors hover:bg-status-success/30 disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         disabled={actingId === r.id}
                         onClick={() => setConfirm({ id: r.id, action: "refuse" })}
-                        className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-800 transition-colors hover:bg-red-200 disabled:opacity-50"
+                        className="rounded bg-status-error/20 px-2 py-1 text-xs font-medium text-status-error transition-colors hover:bg-status-error/30 disabled:opacity-50"
                       >
                         Refuse
                       </button>

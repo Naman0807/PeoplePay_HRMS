@@ -27,15 +27,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-sm space-y-5 shadow-md border-t-4 border-t-gray-900">
+    <main className="flex min-h-screen items-center justify-center bg-background">
+      <Card className="w-full max-w-sm space-y-5 shadow-md border-t-4 border-t-primary">
         <div className="text-center">
-          <div className="text-xl font-semibold tracking-tight text-gray-900">PeoplePay360</div>
-          <p className="mt-1 text-sm text-gray-500">HR &amp; Payroll Platform</p>
+          <div className="text-xl font-semibold tracking-tight text-text-primary">PeoplePay360</div>
+          <p className="mt-1 text-sm text-text-muted">HR &amp; Payroll Platform</p>
         </div>
 
         {error && (
-          <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="rounded-md border border-status-error/30 bg-status-error/10 px-3 py-2 text-sm text-status-error">
             {error}
           </div>
         )}

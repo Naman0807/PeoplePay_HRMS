@@ -63,7 +63,7 @@ export default function EmployeesPage() {
         <Card className="mb-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && (
-              <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div role="alert" className="rounded-md border border-status-error/30 bg-status-error/10 px-3 py-2 text-sm text-status-error">
                 {formError}
               </div>
             )}
@@ -107,14 +107,14 @@ export default function EmployeesPage() {
       {!loading && !error && data?.length > 0 && (
         <Table headers={["Name", "Work email", "Department", "Status"]}>
           {data.map((emp) => (
-            <tr key={emp.id} className="border-t border-gray-100 hover:bg-gray-50">
+            <tr key={emp.id}>
               <td className="px-4 py-2">
-                <Link href={`/employees/${emp.id}`} className="font-medium text-gray-900 hover:underline">
+                <Link href={`/employees/${emp.id}`} className="font-medium text-text-primary hover:underline">
                   {emp.name}
                 </Link>
               </td>
-              <td className="px-4 py-2 text-gray-600">{emp.work_email}</td>
-              <td className="px-4 py-2 text-gray-600">{emp.department || "—"}</td>
+              <td className="px-4 py-2 text-text-muted">{emp.work_email}</td>
+              <td className="px-4 py-2 text-text-muted">{emp.department || "—"}</td>
               <td className="px-4 py-2">
                 <Badge variant={statusVariant(emp.status)}>{emp.status}</Badge>
               </td>

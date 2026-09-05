@@ -114,12 +114,12 @@ export default function AttendancePage() {
       />
 
       {clockError && (
-        <div role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="mb-4 rounded-md border border-status-error/30 bg-status-error/10 px-3 py-2 text-sm text-status-error">
           {clockError}
         </div>
       )}
       {canClock && openEntry && (
-        <p className="mb-4 text-sm text-gray-600">
+        <p className="mb-4 text-sm text-text-muted">
           Clocked in since {new Date(openEntry.check_in).toLocaleString()}.
         </p>
       )}
@@ -174,14 +174,14 @@ export default function AttendancePage() {
       {employeeId && !loading && !error && data?.length > 0 && (
         <Table headers={["Check in", "Check out", "Worked hours", "Status", "Notes"]}>
           {data.map((a) => (
-            <tr key={a.id} className="border-t border-gray-100">
-              <td className="px-4 py-2 text-gray-600">{new Date(a.check_in).toLocaleString()}</td>
-              <td className="px-4 py-2 text-gray-600">{a.check_out ? new Date(a.check_out).toLocaleString() : "—"}</td>
-              <td className="px-4 py-2 text-gray-600">{a.worked_hours ?? "—"}</td>
-              <td className="px-4 py-2 text-gray-600">
+            <tr key={a.id}>
+              <td className="px-4 py-2 text-text-muted">{new Date(a.check_in).toLocaleString()}</td>
+              <td className="px-4 py-2 text-text-muted">{a.check_out ? new Date(a.check_out).toLocaleString() : "—"}</td>
+              <td className="px-4 py-2 text-text-muted">{a.worked_hours ?? "—"}</td>
+              <td className="px-4 py-2 text-text-muted">
                 <Badge variant={statusVariant(a.status)}>{a.status}</Badge>
               </td>
-              <td className="px-4 py-2 text-gray-600">{a.notes || "—"}</td>
+              <td className="px-4 py-2 text-text-muted">{a.notes || "—"}</td>
             </tr>
           ))}
         </Table>

@@ -5,41 +5,38 @@ import Link from "next/link";
 import { Loading, ErrorBox } from "@/components/StatusStates";
 
 const VARIANT_CLASSES = {
-  success: "bg-emerald-100 text-emerald-800",
-  danger: "bg-red-100 text-red-800",
-  warning: "bg-amber-100 text-amber-800",
-  info: "bg-blue-100 text-blue-800",
-  neutral: "bg-gray-100 text-gray-700",
-  default: "bg-gray-100 text-gray-600",
+  success: "text-status-success",
+  danger: "text-status-error",
+  warning: "text-status-warning",
+  info: "text-status-active",
+  neutral: "text-text-muted",
+  default: "text-text-muted",
 };
 
 export function statusVariant(status) {
   const value = String(status || "").toUpperCase();
-  if (["ACTIVE", "PRESENT", "PAID", "CONFIRMED", "APPROVED"].includes(value)) {
+  // RUNNING is a contract's "money is flowing" state — success/green, matching the
+  // design system's "Running"/"Active"/"Present" -> text-status-success rule.
+  if (["ACTIVE", "PRESENT", "PAID", "CONFIRMED", "APPROVED", "RUNNING"].includes(value)) {
     return "success";
   }
   if (["INACTIVE", "ABSENT", "REFUSED"].includes(value)) {
     return "danger";
   }
-  if (["CANCELLED", "EXPIRED"].includes(value)) {
-    return "neutral";
-  }
-  if (["DRAFT", "TO_APPROVE", "PENDING"].includes(value)) {
+  // EXPIRED needs attention (payroll depends on Running, not Expired, contracts) —
+  // warning/orange, per "Expired" -> text-status-warning. CANCELLED stays neutral.
+  if (["EXPIRED", "DRAFT", "TO_APPROVE", "PENDING"].includes(value)) {
     return "warning";
   }
-  if (value === "RUNNING") {
-    return "info";
+  if (value === "CANCELLED") {
+    return "neutral";
   }
   return "neutral";
 }
 
 export function Badge({ children, variant = "default" }) {
   const cls = VARIANT_CLASSES[variant] || VARIANT_CLASSES.default;
-  return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {children}
-    </span>
-  );
+  return <span className={`inline-block text-xs font-medium ${cls}`}>{children}</span>;
 }
 
 function slugify(label) {
@@ -58,13 +55,14 @@ export function Field({
   required = false,
   hint,
   id,
+  className = "",
   ...rest
 }) {
   const inputId = id || slugify(label);
   const describedBy = hint ? `${inputId}-hint` : undefined;
   return (
-    <div>
-      <label htmlFor={inputId} className="block text-xs font-medium text-gray-600">
+    <div className={className}>
+      <label htmlFor={inputId} className="block text-xs font-medium text-text-muted">
         {label}
         {required ? " *" : ""}
       </label>
@@ -75,11 +73,11 @@ export function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-describedby={describedBy}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm transition-colors focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none"
+        className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
         {...rest}
       />
       {hint && (
-        <p id={describedBy} className="mt-1 text-xs text-gray-400">
+        <p id={describedBy} className="mt-1 text-xs text-text-muted">
           {hint}
         </p>
       )}
@@ -95,13 +93,14 @@ export function Select({
   required = false,
   hint,
   id,
+  className = "",
   ...rest
 }) {
   const inputId = id || slugify(label);
   const describedBy = hint ? `${inputId}-hint` : undefined;
   return (
-    <div>
-      <label htmlFor={inputId} className="block text-xs font-medium text-gray-600">
+    <div className={className}>
+      <label htmlFor={inputId} className="block text-xs font-medium text-text-muted">
         {label}
         {required ? " *" : ""}
       </label>
@@ -111,7 +110,7 @@ export function Select({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-describedby={describedBy}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm transition-colors focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none"
+        className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
         {...rest}
       >
         <option value="">Select…</option>
@@ -122,7 +121,7 @@ export function Select({
         ))}
       </select>
       {hint && (
-        <p id={describedBy} className="mt-1 text-xs text-gray-400">
+        <p id={describedBy} className="mt-1 text-xs text-text-muted">
           {hint}
         </p>
       )}
@@ -130,22 +129,22 @@ export function Select({
   );
 }
 
-export function PrimaryButton({ children, ...props }) {
+export function PrimaryButton({ children, className = "", ...props }) {
   return (
     <button
       {...props}
-      className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-all hover:bg-gray-800 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+      className={`rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none ${className}`}
     >
       {children}
     </button>
   );
 }
 
-export function SecondaryButton({ children, ...props }) {
+export function SecondaryButton({ children, className = "", ...props }) {
   return (
     <button
       {...props}
-      className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 transition-all hover:bg-gray-200 active:scale-[0.98] disabled:opacity-50"
+      className={`rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary transition-all hover:bg-surface/50 active:scale-[0.98] disabled:opacity-50 ${className}`}
     >
       {children}
     </button>
@@ -153,13 +152,13 @@ export function SecondaryButton({ children, ...props }) {
 }
 
 export function Card({ children, className = "" }) {
-  return <div className={`rounded-lg border border-gray-200 bg-white p-5 ${className}`}>{children}</div>;
+  return <div className={`rounded-lg border border-border bg-surface p-5 ${className}`}>{children}</div>;
 }
 
 export function PageHeader({ title, actions }) {
   return (
     <div className="mb-6 flex items-center justify-between">
-      <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+      <h1 className="text-xl font-semibold text-text-primary">{title}</h1>
       {actions && <div>{actions}</div>}
     </div>
   );
@@ -169,7 +168,7 @@ export function BackLink({ href, children }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline"
+      className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary hover:underline"
     >
       ← {children}
     </Link>
@@ -178,9 +177,9 @@ export function BackLink({ href, children }) {
 
 export function Table({ headers, children }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[640px] border-collapse text-sm">
-        <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+        <thead className="bg-surface text-left text-xs uppercase text-text-muted">
           <tr>
             {headers.map((h) => (
               <th key={h} className="px-4 py-2 font-medium">
@@ -189,7 +188,9 @@ export function Table({ headers, children }) {
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody className="[&>tr]:border-b [&>tr]:border-border/50 [&>tr:last-child]:border-b-0 [&>tr:hover]:bg-surface/50">
+          {children}
+        </tbody>
       </table>
     </div>
   );
@@ -207,8 +208,8 @@ export function Toast({ message, type = "success", onClose }) {
   return (
     <div
       role="alert"
-      className={`animate-slide-in-up fixed bottom-4 right-4 z-50 rounded-md bg-white px-4 py-3 text-sm text-gray-800 shadow-lg border-l-4 ${
-        type === "error" ? "border-red-500" : "border-emerald-500"
+      className={`animate-slide-in-up fixed bottom-4 right-4 z-50 rounded-md border border-border bg-surface px-4 py-3 text-sm text-text-primary shadow-lg border-l-4 ${
+        type === "error" ? "border-l-status-error" : "border-l-status-success"
       }`}
     >
       <div className="flex items-center gap-3">
@@ -217,7 +218,7 @@ export function Toast({ message, type = "success", onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Dismiss notification"
-          className="text-gray-400 hover:text-gray-600"
+          className="text-text-muted hover:text-text-primary"
         >
           ×
         </button>
@@ -240,27 +241,27 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60"
       onClick={onCancel}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+        className="mx-4 w-full max-w-sm rounded-lg border border-border bg-surface p-6 shadow-xl"
       >
-        <h2 className="mb-2 text-lg font-semibold text-gray-900">{title}</h2>
-        <p className="mb-6 text-sm text-gray-600">{message}</p>
+        <h2 className="mb-2 text-lg font-semibold text-text-primary">{title}</h2>
+        <p className="mb-6 text-sm text-text-muted">{message}</p>
         <div className="flex justify-end gap-2">
           <SecondaryButton onClick={onCancel}>{cancelLabel}</SecondaryButton>
           <button
             type="button"
             onClick={onConfirm}
             autoFocus
-            className={`rounded-md px-3 py-2 text-sm font-medium text-white transition-all active:scale-[0.98] ${
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white transition-all active:scale-[0.98] ${
               danger
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-gray-900 hover:bg-gray-800"
+                ? "bg-status-error hover:bg-status-error/80"
+                : "bg-primary hover:bg-primary-hover"
             }`}
           >
             {confirmLabel}
@@ -274,12 +275,12 @@ export function ConfirmDialog({
 export function EmptyState({ message, actionLabel, onAction }) {
   return (
     <div className="py-10 text-center">
-      <p className="mb-4 text-sm text-gray-400">{message}</p>
+      <p className="mb-4 text-sm text-text-muted">{message}</p>
       {actionLabel && onAction && (
         <button
           type="button"
           onClick={onAction}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-gray-800 active:scale-[0.98]"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-all hover:bg-primary-hover active:scale-[0.98]"
         >
           {actionLabel}
         </button>
