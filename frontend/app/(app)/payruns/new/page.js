@@ -4,7 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
-import { Loading, ErrorBox, Empty } from "@/components/StatusStates";
+import {
+  PageHeader,
+  Badge,
+  Field,
+  Card,
+  PrimaryButton,
+  Toast,
+  EmptyState,
+  Loading,
+  ErrorBox,
+} from "@/components/ui";
 
 export default function NewPayrunPage() {
   const router = useRouter();
@@ -13,6 +23,7 @@ export default function NewPayrunPage() {
   const [form, setForm] = useState({ name: "", structure_id: "1", date_start: "", date_end: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const eligibleUrl = payrunId ? `/api/payruns/${payrunId}/eligible-employees` : null;
   const { data: eligible, loading: eligLoading, error: eligError, refetch } = useFetch(eligibleUrl);
@@ -30,6 +41,7 @@ export default function NewPayrunPage() {
       });
       setPayrunId(res.data.data.id);
       setStep(2);
+      setToast("Payrun created");
     } catch (err) {
       setError(err.response?.data?.message || "Could not create payrun.");
     } finally {
@@ -39,41 +51,42 @@ export default function NewPayrunPage() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">New payrun — step {step} of 2</h1>
+      <PageHeader
+        title="New payrun"
+        actions={<Badge variant="info">Step {step} of 2</Badge>}
+      />
 
       {step === 1 && (
-        <form onSubmit={handleCreate} className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
-          {error && <ErrorBox message={error} />}
-          <Field label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
-          <Field
-            label="Structure ID"
-            type="number"
-            value={form.structure_id}
-            onChange={(v) => setForm({ ...form, structure_id: v })}
-            required
-            hint="Seeded payroll structure ID (default 1 from the seed script)."
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Period start" type="date" value={form.date_start} onChange={(v) => setForm({ ...form, date_start: v })} required />
-            <Field label="Period end" type="date" value={form.date_end} onChange={(v) => setForm({ ...form, date_end: v })} required />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {submitting ? "Creating…" : "Create & review eligible employees"}
-          </button>
-        </form>
+        <Card>
+          <form onSubmit={handleCreate} className="space-y-3">
+            {error && <ErrorBox message={error} />}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
+              <Field
+                label="Structure ID"
+                type="number"
+                value={form.structure_id}
+                onChange={(v) => setForm({ ...form, structure_id: v })}
+                required
+                hint="Seeded payroll structure ID (default 1 from the seed script)."
+              />
+              <Field label="Period start" type="date" value={form.date_start} onChange={(v) => setForm({ ...form, date_start: v })} required />
+              <Field label="Period end" type="date" value={form.date_end} onChange={(v) => setForm({ ...form, date_end: v })} required />
+            </div>
+            <PrimaryButton type="submit" disabled={submitting}>
+              {submitting ? "Creating…" : "Create & review eligible employees"}
+            </PrimaryButton>
+          </form>
+        </Card>
       )}
 
       {step === 2 && (
-        <div className="space-y-4">
+        <Card className="space-y-4">
           {eligLoading && <Loading />}
           {eligError && <ErrorBox message={eligError} onRetry={refetch} />}
-          {!eligLoading && !eligError && eligible?.length === 0 && <Empty message="No eligible employees for this period." />}
+          {!eligLoading && !eligError && eligible?.length === 0 && <EmptyState message="No eligible employees for this period." />}
           {!eligLoading && !eligError && eligible?.length > 0 && (
-            <ul className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+            <ul className="rounded-lg border border-gray-200 p-2 text-sm">
               {eligible.map((e) => (
                 <li key={e.id} className="border-b border-gray-100 py-1.5 last:border-0">
                   {e.name}
@@ -81,30 +94,13 @@ export default function NewPayrunPage() {
               ))}
             </ul>
           )}
-          <button
-            onClick={() => router.push(`/payruns/${payrunId}`)}
-            className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
-          >
+          <PrimaryButton onClick={() => router.push(`/payruns/${payrunId}`)}>
             Continue to compute →
-          </button>
-        </div>
+          </PrimaryButton>
+        </Card>
       )}
-    </div>
-  );
-}
 
-function Field({ label, value, onChange, type = "text", required = false, hint }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-600">{label}</label>
-      <input
-        type={type}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-      />
-      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

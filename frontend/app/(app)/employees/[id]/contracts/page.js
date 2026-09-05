@@ -2,10 +2,23 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
-import { Loading, ErrorBox, Empty } from "@/components/StatusStates";
+import {
+  BackLink,
+  PageHeader,
+  Field,
+  Select,
+  Card,
+  PrimaryButton,
+  Table,
+  Badge,
+  statusVariant,
+  Toast,
+  EmptyState,
+  Loading,
+  ErrorBox,
+} from "@/components/ui";
 
 const EMPTY_FORM = {
   reference: "",
@@ -15,6 +28,11 @@ const EMPTY_FORM = {
   state: "DRAFT",
   resource_calendar_id: "",
 };
+
+const currency = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 
 export default function EmployeeContractsPage() {
   const { id } = useParams();
@@ -26,6 +44,7 @@ export default function EmployeeContractsPage() {
   // from a generic form error so the demo can point at exactly what's blocking it.
   const [formError, setFormError] = useState(null);
   const [overlapDetail, setOverlapDetail] = useState(null);
+  const [toast, setToast] = useState(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -45,6 +64,7 @@ export default function EmployeeContractsPage() {
       setForm(EMPTY_FORM);
       setShowForm(false);
       refetch();
+      setToast("Contract created successfully");
     } catch (err) {
       const body = err.response?.data;
       if (body?.error === "CONTRACT_OVERLAP") {
@@ -59,116 +79,87 @@ export default function EmployeeContractsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <Link href={`/employees/${id}`} className="text-xs text-gray-500 hover:underline">
-            ← Back to employee
-          </Link>
-          <h1 className="text-xl font-semibold text-gray-900">Contracts</h1>
-        </div>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white"
-        >
-          {showForm ? "Cancel" : "New contract"}
-        </button>
+      <div className="mb-4">
+        <BackLink href={`/employees/${id}`}>Back to employee</BackLink>
       </div>
 
+      <PageHeader
+        title="Contracts"
+        actions={
+          <PrimaryButton onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Cancel" : "New contract"}
+          </PrimaryButton>
+        }
+      />
+
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 space-y-3 rounded-lg border border-gray-200 bg-white p-5">
-          {formError && <ErrorBox message={formError} />}
-          {overlapDetail && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              <b>Contract overlap (409):</b> {overlapDetail}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Reference" value={form.reference} onChange={(v) => setForm({ ...form, reference: v })} required />
-            <Field label="Wage" type="number" value={form.wage} onChange={(v) => setForm({ ...form, wage: v })} required />
-            <Field
-              label="Start date"
-              type="date"
-              value={form.start_date}
-              onChange={(v) => setForm({ ...form, start_date: v })}
-              required
-            />
-            <Field label="End date" type="date" value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} />
-            <div>
-              <label className="block text-xs font-medium text-gray-600">State</label>
-              <select
+        <Card className="mb-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {formError && <ErrorBox message={formError} />}
+            {overlapDetail && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <b>Contract overlap (409):</b> {overlapDetail}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Reference" value={form.reference} onChange={(v) => setForm({ ...form, reference: v })} required />
+              <Field label="Wage" type="number" value={form.wage} onChange={(v) => setForm({ ...form, wage: v })} required />
+              <Field
+                label="Start date"
+                type="date"
+                value={form.start_date}
+                onChange={(v) => setForm({ ...form, start_date: v })}
+                required
+              />
+              <Field label="End date" type="date" value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} />
+              <Select
+                label="State"
                 value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-              >
-                <option value="DRAFT">DRAFT</option>
-                <option value="RUNNING">RUNNING</option>
-                <option value="EXPIRED">EXPIRED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </select>
-              <p className="mt-1 text-xs text-gray-400">Overlap check (409) only runs when state is RUNNING.</p>
+                onChange={(v) => setForm({ ...form, state: v })}
+                options={[
+                  { value: "DRAFT", label: "DRAFT" },
+                  { value: "RUNNING", label: "RUNNING" },
+                  { value: "EXPIRED", label: "EXPIRED" },
+                  { value: "CANCELLED", label: "CANCELLED" },
+                ]}
+                hint="Overlap check (409) only runs when state is RUNNING."
+              />
+              <Field
+                label="Resource calendar ID (optional)"
+                type="number"
+                value={form.resource_calendar_id}
+                onChange={(v) => setForm({ ...form, resource_calendar_id: v })}
+                hint="Blank falls back to the employee's own calendar."
+              />
             </div>
-            <Field
-              label="Resource calendar ID (optional)"
-              type="number"
-              value={form.resource_calendar_id}
-              onChange={(v) => setForm({ ...form, resource_calendar_id: v })}
-              hint="Blank falls back to the employee's own calendar."
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {submitting ? "Saving…" : "Save contract"}
-          </button>
-        </form>
+            <PrimaryButton type="submit" disabled={submitting}>
+              {submitting ? "Saving…" : "Save contract"}
+            </PrimaryButton>
+          </form>
+        </Card>
       )}
 
       {loading && <Loading />}
       {error && <ErrorBox message={error} onRetry={refetch} />}
-      {!loading && !error && data?.length === 0 && <Empty message="No contracts yet." />}
+      {!loading && !error && data?.length === 0 && <EmptyState message="No contracts yet." />}
 
       {!loading && !error && data?.length > 0 && (
-        <table className="w-full border-collapse overflow-hidden rounded-lg border border-gray-200 bg-white text-sm">
-          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-2">Reference</th>
-              <th className="px-4 py-2">Wage</th>
-              <th className="px-4 py-2">Start</th>
-              <th className="px-4 py-2">End</th>
-              <th className="px-4 py-2">State</th>
+        <Table headers={["Reference", "Wage", "Start", "End", "State"]}>
+          {data.map((c) => (
+            <tr key={c.id} className="border-t border-gray-100">
+              <td className="px-4 py-2 font-medium text-gray-900">{c.reference}</td>
+              <td className="px-4 py-2 text-gray-600">{currency.format(c.wage)}</td>
+              <td className="px-4 py-2 text-gray-600">{c.start_date?.slice(0, 10)}</td>
+              <td className="px-4 py-2 text-gray-600">{c.end_date?.slice(0, 10) || "—"}</td>
+              <td className="px-4 py-2 text-gray-600">
+                <Badge variant={statusVariant(c.state)}>{c.state}</Badge>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {data.map((c) => (
-              <tr key={c.id} className="border-t border-gray-100">
-                <td className="px-4 py-2 font-medium text-gray-900">{c.reference}</td>
-                <td className="px-4 py-2 text-gray-600">{c.wage}</td>
-                <td className="px-4 py-2 text-gray-600">{c.start_date?.slice(0, 10)}</td>
-                <td className="px-4 py-2 text-gray-600">{c.end_date?.slice(0, 10) || "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{c.state}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          ))}
+        </Table>
       )}
-    </div>
-  );
-}
 
-function Field({ label, value, onChange, type = "text", required = false, hint }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-600">{label}</label>
-      <input
-        type={type}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-      />
-      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

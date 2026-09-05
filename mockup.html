@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeoplePay360 — Visual Mockup</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F3F4F6; color: #4B5563; font-size: 14px; line-height: 1.5; }
+
+  /* ── Layout Shell ── */
+  .app-shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #111827; color: #D1D5DB; padding: 20px 0; flex-shrink: 0; display: flex; flex-direction: column; }
+  .sidebar-brand { padding: 0 20px 20px; border-bottom: 1px solid #374151; }
+  .sidebar-brand h1 { color: #F9FAFB; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .sidebar-brand span { font-size: 11px; color: #9CA3AF; display: block; margin-top: 2px; }
+  .sidebar nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+  .sidebar nav a {
+    display: flex; align-items: center; gap: 10px; padding: 8px 20px; font-size: 13px;
+    color: #9CA3AF; text-decoration: none; transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .sidebar nav a:hover { color: #F3F4F6; background: rgba(255,255,255,0.04); }
+  .sidebar nav a.active { color: #F9FAFB; background: rgba(255,255,255,0.08); border-left-color: #10B981; }
+  .sidebar nav a .nav-num { display: inline-block; width: 18px; font-size: 11px; color: #6B7280; text-align: right; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid #374151; font-size: 11px; color: #6B7280; }
+
+  .main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ── Top Banner ── */
+  .top-banner {
+    background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
+    color: #F9FAFB; padding: 10px 24px; font-size: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .top-banner .badge {
+    background: #10B981; color: #fff; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* ── Page Sections ── */
+  .page-section { display: none; flex: 1; overflow-y: auto; background: #F9FAFB; }
+  .page-section.active { display: block; }
+  .page-content { max-width: 1024px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── Nav Bar (inside dashboard pages) ── */
+  .top-nav {
+    background: #fff; border-bottom: 1px solid #E5E7EB; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between; height: 48px;
+  }
+  .top-nav .nav-links { display: flex; gap: 4px; }
+  .top-nav .nav-links a {
+    padding: 12px 12px; font-size: 13px; font-weight: 500; color: #6B7280;
+    text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .top-nav .nav-links a:hover { color: #111827; }
+  .top-nav .nav-links a.active { color: #111827; border-bottom-color: #111827; }
+  .top-nav .nav-right { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #6B7280; }
+  .top-nav .nav-right .logout-btn {
+    background: #F3F4F6; color: #1F2937; border: 1px solid #E5E7EB;
+    padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
+  }
+
+  /* ── Common Components ── */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-size: 20px; font-weight: 600; color: #111827; }
+  .design-badge {
+    display: inline-block; background: #EFF6FF; color: #1D4ED8; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+    margin-left: 12px; vertical-align: middle;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 14px;
+    font-weight: 500; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .btn-dark { background: #111827; color: #fff; }
+  .btn-dark:hover { background: #1F2937; }
+  .btn-secondary { background: #F3F4F6; color: #1F2937; border: 1px solid #E5E7EB; }
+  .btn-approve { background: #D1FAE5; color: #065F46; }
+  .btn-refuse { background: #FEE2E2; color: #991B1B; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  .link { color: #2563EB; font-size: 14px; text-decoration: none; }
+  .link:hover { text-decoration: underline; }
+  .link-muted { color: #6B7280; font-size: 13px; text-decoration: none; }
+  .link-muted:hover { color: #111827; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px;
+  }
+
+  /* ── KPI Cards ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .kpi-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px; }
+  .kpi-label { font-size: 12px; font-weight: 500; color: #6B7280; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+  .kpi-value { font-size: 24px; font-weight: 600; color: #111827; }
+
+  /* ── Forms ── */
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 12px; font-weight: 500; color: #4B5563; margin-bottom: 4px; }
+  .form-input {
+    width: 100%; max-width: 400px; padding: 6px 12px; font-size: 14px; color: #111827;
+    border: 1px solid #D1D5DB; border-radius: 6px; background: #fff;
+    font-family: inherit;
+  }
+  .form-input:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
+  .form-row { display: flex; gap: 16px; }
+  .form-row .form-group { flex: 1; }
+  .form-hint { font-size: 12px; color: #9CA3AF; margin-top: 4px; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; padding: 10px 16px; font-size: 12px; font-weight: 500;
+    color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px;
+    background: #F9FAFB; border-bottom: 1px solid #E5E7EB;
+  }
+  tbody td {
+    padding: 12px 16px; font-size: 14px; color: #4B5563;
+    border-bottom: 1px solid #F3F4F6;
+  }
+  tbody tr:hover { background: #F9FAFB; }
+
+  /* ── Badges ── */
+  .badge-active { background: #D1FAE5; color: #065F46; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+  .badge-inactive { background: #FEE2E2; color: #991B1B; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+  .badge-pending { background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+  .badge-done { background: #DBEAFE; color: #1E40AF; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+
+  /* ── Bar Chart ── */
+  .bar-chart { margin-top: 16px; }
+  .bar-row { display: flex; align-items: center; margin-bottom: 12px; }
+  .bar-label { width: 110px; font-size: 13px; color: #4B5563; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 24px; background: #F3F4F6; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: #10B981; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; }
+  .bar-fill span { color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+  /* ── Warning Banner ── */
+  .warning-banner {
+    background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .warning-banner .icon { color: #D97706; font-size: 18px; flex-shrink: 0; line-height: 1; }
+  .warning-banner .text { font-size: 13px; color: #92400E; line-height: 1.5; }
+  .warning-banner .text strong { font-weight: 600; }
+
+  .error-banner {
+    background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px;
+  }
+  .error-banner .text { font-size: 13px; color: #B91C1C; }
+
+  /* ── Login Page ── */
+  .login-page {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: #F3F4F6;
+  }
+  .login-card {
+    background: #fff; border: 1px solid #E5E7EB; border-radius: 8px;
+    padding: 32px; width: 100%; max-width: 384px;
+  }
+  .login-card h1 { font-size: 20px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+  .login-card .subtitle { font-size: 13px; color: #6B7280; margin-bottom: 24px; }
+  .login-card .form-input { max-width: 100%; }
+  .login-card .btn { width: 100%; justify-content: center; margin-top: 8px; }
+
+  /* ── Misc ── */
+  .section-divider { border: none; border-top: 1px solid #F3F4F6; margin: 24px 0; }
+  .step-indicator { font-size: 13px; color: #6B7280; margin-bottom: 20px; }
+  .step-indicator strong { color: #111827; font-weight: 600; }
+  .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F3F4F6; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-key { font-size: 13px; color: #6B7280; }
+  .summary-val { font-size: 13px; font-weight: 500; color: #111827; }
+  .summary-val.big { font-size: 18px; font-weight: 600; }
+  .actions-row { display: flex; gap: 8px; margin-top: 20px; }
+  .spacer { height: 24px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .sidebar { width: 180px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .sidebar { display: none; }
+    .kpi-row { grid-template-columns: 1fr; }
+    .form-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ═══════ SIDEBAR ═══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>PeoplePay360</h1>
+      <span>Visual Mockup</span>
+    </div>
+    <nav>
+      <a href="#" data-page="login" class="active"><span class="nav-num">00</span> Login</a>
+      <a href="#" data-page="dashboard"><span class="nav-num">01</span> Dashboard</a>
+      <a href="#" data-page="employees"><span class="nav-num">02</span> Employees</a>
+      <a href="#" data-page="employee-detail"><span class="nav-num">03</span> Employee Detail</a>
+      <a href="#" data-page="contracts"><span class="nav-num">04</span> Contracts</a>
+      <a href="#" data-page="attendance"><span class="nav-num">05</span> Attendance</a>
+      <a href="#" data-page="timeoff"><span class="nav-num">06</span> Time Off</a>
+      <a href="#" data-page="payroll"><span class="nav-num">07</span> Payroll</a>
+      <a href="#" data-page="new-payrun"><span class="nav-num">08</span> New Payrun</a>
+      <a href="#" data-page="payrun-detail"><span class="nav-num">09</span> Payrun Detail</a>
+      <a href="#" data-page="payslip"><span class="nav-num">10</span> Payslip</a>
+    </nav>
+    <div class="sidebar-footer">Design Preview v1.0</div>
+  </aside>
+
+  <div class="main-area">
+    <!-- ── Top Banner ── -->
+    <div class="top-banner">
+      <span>PeoplePay360 — HR &amp; Payroll Visual Mockup</span>
+      <span class="badge">Design Preview</span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 0 : LOGIN                                     -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-login" class="page-section active">
+      <div class="login-page">
+        <div class="login-card">
+          <h1>PeoplePay360</h1>
+          <p class="subtitle">Sign in to your account</p>
+          <div class="form-group">
+            <label class="form-label">Login</label>
+            <input class="form-input" type="text" placeholder="e.g. admin@company.com" value="admin@company.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="form-input" type="password" value="password123">
+          </div>
+          <button class="btn btn-dark" style="margin-top:4px;">Sign in</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 1 : DASHBOARD                                 -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-dashboard" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#">Payroll</a><a href="#" class="active">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div>
+            <span class="page-title">Dashboard</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:24px;">
+          <div class="form-group" style="max-width:200px;">
+            <label class="form-label">Period</label>
+            <input class="form-input" type="month" value="2026-09">
+          </div>
+          <div class="form-group" style="max-width:200px;">
+            <label class="form-label">Department</label>
+            <input class="form-input" type="text" placeholder="All departments">
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">Headcount</div>
+            <div class="kpi-value">12</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total Gross</div>
+            <div class="kpi-value">$145,000</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total Net</div>
+            <div class="kpi-value">$118,500</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Pending Leave</div>
+            <div class="kpi-value">3</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:15px;font-weight:600;color:#111827;margin-bottom:16px;">Salary by Department</h3>
+          <div class="bar-chart">
+            <div class="bar-row">
+              <div class="bar-label">Engineering</div>
+              <div class="bar-track"><div class="bar-fill" style="width:100%"><span>$52,000</span></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Marketing</div>
+              <div class="bar-track"><div class="bar-fill" style="width:65%"><span>$34,000</span></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Sales</div>
+              <div class="bar-track"><div class="bar-fill" style="width:74%"><span>$38,500</span></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">HR</div>
+              <div class="bar-track"><div class="bar-fill" style="width:35%"><span>$18,000</span></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Finance</div>
+              <div class="bar-track"><div class="bar-fill" style="width:43%"><span>$22,500</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 2 : EMPLOYEES LIST                            -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-employees" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#" class="active">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div>
+            <span class="page-title">Employees</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <button class="btn btn-dark">+ Add employee</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Work Email</th><th>Department</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">Alice Johnson</td>
+                  <td>alice@company.com</td>
+                  <td>Engineering</td>
+                  <td><span class="badge-active">ACTIVE</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">Bob Smith</td>
+                  <td>bob@company.com</td>
+                  <td>Marketing</td>
+                  <td><span class="badge-active">ACTIVE</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">Carol White</td>
+                  <td>carol@company.com</td>
+                  <td>HR</td>
+                  <td><span class="badge-inactive">INACTIVE</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 3 : EMPLOYEE DETAIL                           -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-employee-detail" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#" class="active">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <span class="page-title">Alice Johnson</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <a href="#" class="link">Contracts →</a>
+        </div>
+        <div class="card" style="max-width:512px;">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" type="text" value="Alice Johnson">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Work Email</label>
+            <input class="form-input" type="email" value="alice@company.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <input class="form-input" type="text" value="Engineering">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Job Title</label>
+            <input class="form-input" type="text" value="Senior Developer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-input" style="max-width:200px;">
+              <option selected>ACTIVE</option>
+              <option>INACTIVE</option>
+            </select>
+          </div>
+          <button class="btn btn-dark" style="margin-top:8px;">Save changes</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 4 : CONTRACTS                                 -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-contracts" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#" class="active">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <a href="#" class="link-muted" style="display:inline-block;margin-bottom:8px;">← Back to employee</a>
+        <div class="page-header">
+          <div>
+            <span class="page-title">Contracts — Alice Johnson</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <button class="btn btn-dark">+ New contract</button>
+        </div>
+
+        <div class="warning-banner">
+          <div class="icon">⚠</div>
+          <div class="text">
+            <strong>Contract overlap (HTTP 409):</strong> The new contract overlaps with an existing active contract. Please set an end date on the current contract before creating a new one, or adjust the start date.
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:24px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Reference</label>
+              <input class="form-input" type="text" placeholder="e.g. ALI-2026-001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Wage</label>
+              <input class="form-input" type="number" placeholder="e.g. 75000" value="75000">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Start Date</label>
+              <input class="form-input" type="date" value="2026-01-01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Date</label>
+              <input class="form-input" type="date" placeholder="Optional">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <select class="form-input">
+                <option selected>Running</option>
+                <option>Draft</option>
+                <option>Expired</option>
+                <option>Terminated</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Resource Calendar ID</label>
+              <input class="form-input" type="text" value="Standard 40h/week">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Reference</th><th>Wage</th><th>Start Date</th><th>End Date</th><th>State</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">ALI-2024-001</td>
+                  <td>$65,000</td>
+                  <td>2024-01-01</td>
+                  <td>2025-12-31</td>
+                  <td><span class="badge-done">Expired</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">ALI-2026-001</td>
+                  <td>$75,000</td>
+                  <td>2026-01-01</td>
+                  <td>—</td>
+                  <td><span class="badge-active">Running</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 5 : ATTENDANCE                                -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-attendance" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#" class="active">Attendance</a><a href="#">Time Off</a>
+          <a href="#">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div>
+            <span class="page-title">Attendance</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <button class="btn btn-dark">+ Add entry</button>
+        </div>
+        <div class="card" style="margin-bottom:24px;">
+          <div class="form-group">
+            <label class="form-label">Employee</label>
+            <select class="form-input" style="max-width:280px;">
+              <option selected>Alice Johnson</option>
+              <option>Bob Smith</option>
+              <option>Carol White</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Check In</label>
+              <input class="form-input" type="datetime-local" value="2026-09-01T09:00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Check Out</label>
+              <input class="form-input" type="datetime-local" value="2026-09-01T17:30">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-input" style="max-width:180px;">
+                <option selected>PRESENT</option>
+                <option>ABSENT</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <input class="form-input" type="text" placeholder="Optional notes">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Check In</th><th>Check Out</th><th>Worked Hours</th><th>Status</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>2026-09-01 09:00</td>
+                  <td>2026-09-01 17:30</td>
+                  <td>8.5</td>
+                  <td><span class="badge-active">PRESENT</span></td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>2026-09-02 08:55</td>
+                  <td>2026-09-02 17:05</td>
+                  <td>8.17</td>
+                  <td><span class="badge-active">PRESENT</span></td>
+                  <td>Early standup</td>
+                </tr>
+                <tr>
+                  <td>—</td>
+                  <td>—</td>
+                  <td>0</td>
+                  <td><span class="badge-inactive">ABSENT</span></td>
+                  <td>Sick leave</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 6 : TIME OFF                                  -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-timeoff" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#">Attendance</a><a href="#" class="active">Time Off</a>
+          <a href="#">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div>
+            <span class="page-title">Time Off</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <button class="btn btn-dark">+ Request leave</button>
+        </div>
+        <div class="card" style="margin-bottom:24px;">
+          <div class="form-group">
+            <label class="form-label">Filter by employee</label>
+            <select class="form-input" style="max-width:280px;">
+              <option>All employees</option>
+              <option selected>Alice Johnson</option>
+              <option>Bob Smith</option>
+              <option>Carol White</option>
+            </select>
+          </div>
+          <hr class="section-divider">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Leave Type</label>
+              <select class="form-input">
+                <option selected>Annual Leave</option>
+                <option>Sick Leave</option>
+                <option>Personal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Number of Days</label>
+              <input class="form-input" type="number" value="5" min="1" max="30">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">From</label>
+              <input class="form-input" type="date" value="2026-09-15">
+            </div>
+            <div class="form-group">
+              <label class="form-label">To</label>
+              <input class="form-input" type="date" value="2026-09-19">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reason</label>
+            <input class="form-input" type="text" placeholder="Family vacation">
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>From</th><th>To</th><th>Days</th><th>State</th><th>Actions</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>2026-09-15</td><td>2026-09-19</td><td>5</td>
+                  <td><span class="badge-pending">To Approve</span></td>
+                  <td style="display:flex;gap:6px;">
+                    <button class="btn btn-approve btn-sm">Approve</button>
+                    <button class="btn btn-refuse btn-sm">Refuse</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>2026-08-01</td><td>2026-08-02</td><td>2</td>
+                  <td><span class="badge-active">Approved</span></td>
+                  <td><span style="font-size:12px;color:#9CA3AF;">—</span></td>
+                </tr>
+                <tr>
+                  <td>2026-07-14</td><td>2026-07-14</td><td>1</td>
+                  <td><span class="badge-inactive">Refused</span></td>
+                  <td><span style="font-size:12px;color:#9CA3AF;">—</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 7 : PAYROLL LIST                              -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-payroll" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#" class="active">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div>
+            <span class="page-title">Payroll</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <button class="btn btn-dark">+ New payrun</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Period</th><th>State</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">September 2026</td>
+                  <td>2026-09-01 → 2026-09-30</td>
+                  <td><span class="badge-pending">Draft</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">August 2026</td>
+                  <td>2026-08-01 → 2026-08-31</td>
+                  <td><span class="badge-active">Done</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500;color:#111827;">July 2026</td>
+                  <td>2026-07-01 → 2026-07-31</td>
+                  <td><span class="badge-active">Done</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 8 : NEW PAYRUN                                -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-new-payrun" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#" class="active">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="page-header">
+          <div>
+            <span class="page-title">New Payrun</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+        </div>
+        <div class="step-indicator">
+          <strong>Step 1 of 2</strong> — Configure payrun details
+        </div>
+        <div class="card" style="max-width:512px;">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" type="text" value="October 2026">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Structure ID</label>
+            <select class="form-input">
+              <option selected>Regular Payroll</option>
+              <option>Contractor Payments</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Period Start</label>
+              <input class="form-input" type="date" value="2026-10-01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Period End</label>
+              <input class="form-input" type="date" value="2026-10-31">
+            </div>
+          </div>
+          <button class="btn btn-dark" style="margin-top:8px;">Create &amp; review eligible employees →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 9 : PAYRUN DETAIL                             -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-payrun-detail" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#" class="active">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <a href="#" class="link-muted" style="display:inline-block;margin-bottom:8px;">← All payruns</a>
+        <div class="page-header">
+          <div>
+            <span class="page-title">September 2026</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <div class="actions-row">
+            <button class="btn btn-dark">Compute</button>
+            <button class="btn btn-secondary">Confirm</button>
+            <button class="btn btn-secondary">Mark paid</button>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:20px;">
+          <div style="display:flex;gap:24px;">
+            <div>
+              <div class="form-label">Period</div>
+              <div style="font-size:14px;color:#111827;">2026-09-01 → 2026-09-30</div>
+            </div>
+            <div>
+              <div class="form-label">State</div>
+              <span class="badge-pending">Draft</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Payslip</th><th>Employee</th><th>Gross</th><th>Net</th><th>Warning</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><a href="#" class="link" style="font-weight:500;">#42</a></td>
+                  <td>Alice Johnson</td>
+                  <td>$6,250</td>
+                  <td>$4,937</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><a href="#" class="link" style="font-weight:500;">#43</a></td>
+                  <td>Bob Smith</td>
+                  <td>$5,833</td>
+                  <td>$4,607</td>
+                  <td><span class="badge-pending" style="font-size:11px;">Missing bank details</span></td>
+                </tr>
+                <tr>
+                  <td><a href="#" class="link" style="font-weight:500;">#44</a></td>
+                  <td>Carol White</td>
+                  <td>$5,000</td>
+                  <td>$4,100</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PAGE 10 : PAYSLIP DETAIL                           -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <section id="page-payslip" class="page-section">
+      <div class="top-nav">
+        <div class="nav-links">
+          <a href="#">Employees</a><a href="#">Attendance</a><a href="#">Time Off</a>
+          <a href="#" class="active">Payroll</a><a href="#">Dashboard</a>
+        </div>
+        <div class="nav-right">
+          <span>Jane Doe · Admin</span>
+          <button class="logout-btn">Log out</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <a href="#" class="link-muted" style="display:inline-block;margin-bottom:8px;">← Back to payrun</a>
+        <div class="page-header">
+          <div>
+            <span class="page-title">Payslip #42</span>
+            <span class="design-badge">Current Design</span>
+          </div>
+          <a href="#" class="link">Download PDF →</a>
+        </div>
+
+        <div class="card" style="margin-bottom:24px;">
+          <div class="summary-row">
+            <span class="summary-key">Employee</span>
+            <span class="summary-val">Alice Johnson</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Period</span>
+            <span class="summary-val">September 2026</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">State</span>
+            <span class="summary-val"><span class="badge-pending">Draft</span></span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Gross</span>
+            <span class="summary-val big">$6,250.00</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">Net</span>
+            <span class="summary-val big" style="color:#065F46;">$4,937.50</span>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
+            <h3 style="font-size:15px;font-weight:600;color:#111827;">Line Items</h3>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Rule</th><th>Amount</th></tr></thead>
+              <tbody>
+                <tr><td style="color:#111827;">Basic Salary</td><td style="font-weight:500;">$6,250.00</td></tr>
+                <tr><td style="color:#111827;">Federal Income Tax</td><td style="font-weight:500;color:#991B1B;">−$812.50</td></tr>
+                <tr><td style="color:#111827;">Social Security (6.2%)</td><td style="font-weight:500;color:#991B1B;">−$387.50</td></tr>
+                <tr><td style="color:#111827;">Medicare (1.45%)</td><td style="font-weight:500;color:#991B1B;">−$90.63</td></tr>
+                <tr><td style="color:#111827;">401(k) Contribution</td><td style="font-weight:500;color:#991B1B;">−$18.87</td></tr>
+                <tr style="background:#F9FAFB;font-weight:600;">
+                  <td style="color:#111827;">Net Pay</td>
+                  <td style="color:#065F46;font-size:15px;">$4,937.50</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /main-area -->
+</div><!-- /app-shell -->
+
+<script>
+  // Sidebar page switching
+  document.querySelectorAll('.sidebar nav a').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const pageId = this.dataset.page;
+
+      // Update sidebar active state
+      document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
+      this.classList.add('active');
+
+      // Show/hide page sections
+      document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById('page-' + pageId);
+      if (target) target.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

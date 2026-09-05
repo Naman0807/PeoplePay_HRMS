@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/auth";
+import { Field, PrimaryButton, Card } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,48 +28,44 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 bg-white p-8 shadow-sm"
-      >
-        <h1 className="text-xl font-semibold text-gray-900">PeoplePay360</h1>
+      <Card className="w-full max-w-sm space-y-5 shadow-md border-t-4 border-t-gray-900">
+        <div className="text-center">
+          <div className="text-xl font-semibold tracking-tight text-gray-900">PeoplePay360</div>
+          <p className="mt-1 text-sm text-gray-500">HR &amp; Payroll Platform</p>
+        </div>
 
         {error && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Login</label>
-          <input
-            type="text"
-            required
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field
+            id="login"
+            label="Login"
             value={loginId}
-            onChange={(e) => setLoginId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Password</label>
-          <input
-            type="password"
+            onChange={setLoginId}
+            autoComplete="username"
+            autoFocus
             required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-        </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+          <Field
+            id="password"
+            type="password"
+            label="Password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            required
+          />
+
+          <PrimaryButton type="submit" disabled={submitting} className="w-full">
+            {submitting ? "Signing in…" : "Sign in"}
+          </PrimaryButton>
+        </form>
+      </Card>
     </main>
   );
 }
