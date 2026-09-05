@@ -11,6 +11,8 @@ import { payslipRoutes } from "./routes/payslips";
 import { leaveRoutes } from "./routes/leaves";
 import { attendanceRoutes } from "./routes/attendances";
 import { dashboardRoutes } from "./routes/dashboard";
+import { structureRoutes, salaryRuleRoutes } from "./routes/payroll-config";
+import { userRoutes } from "./routes/users";
 
 export const app = express();
 
@@ -28,6 +30,9 @@ app.use("/api/payslips", payslipRoutes);
 app.use("/api/leave-requests", leaveRoutes);
 app.use("/api/attendances", attendanceRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/salary-structures", structureRoutes);
+app.use("/api/salary-rules", salaryRuleRoutes);
+app.use("/api/users", userRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
