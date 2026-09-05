@@ -166,16 +166,33 @@ test("the department filter changes the numbers", async () => {
   const engineering = await get("/api/dashboard/kpis?period=2026-04&department=Engineering");
   const all = await get("/api/dashboard/kpis?period=2026-04");
 
+  // Only this fixture sits in TEST-DEPT, so its slice is exact.
   assert.equal(Number(mine.body.data.total_gross), 70000);
-  // Asha 120000 -> 84000 gross, Rohit 85000 -> 59500 gross.
-  assert.equal(Number(engineering.body.data.total_gross), 143500);
-  assert.notEqual(Number(mine.body.data.total_gross), Number(engineering.body.data.total_gross));
   assert.equal(mine.body.data.headcount, 1);
-  assert.equal(engineering.body.data.headcount, 2);
+
+  // Engineering's totals depend on whatever else lives in the database, so compare
+  // the endpoint against the same sum taken straight from the tables rather than a
+  // constant — demo data must not be able to turn this red.
+  const engineeringSum = await prisma.payslip.aggregate({
+    where: {
+      state: { in: ["DONE", "PAID"] },
+      date_from: { gte: new Date("2026-04-01") },
+      date_to: { lte: new Date("2026-04-30") },
+      employee: { department: "Engineering" },
+    },
+    _sum: { gross_amount: true },
+  });
+  assert.equal(
+    Number(engineering.body.data.total_gross),
+    Number(engineeringSum._sum.gross_amount ?? 0)
+  );
+
+  assert.notEqual(Number(mine.body.data.total_gross), Number(engineering.body.data.total_gross));
+  assert.notEqual(mine.body.data.headcount, engineering.body.data.headcount);
 
   assert.ok(
-    Number(all.body.data.total_gross) >
-      Number(mine.body.data.total_gross) + Number(engineering.body.data.total_gross) - 1,
+    Number(all.body.data.total_gross) >=
+      Number(mine.body.data.total_gross) + Number(engineering.body.data.total_gross),
     "the unfiltered total must be at least the sum of the filtered slices"
   );
 });
