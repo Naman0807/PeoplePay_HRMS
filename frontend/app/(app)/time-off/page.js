@@ -191,12 +191,13 @@ export default function TimeOffPage() {
       {!loading && !error && data?.length === 0 && <EmptyState message="No leave requests yet." />}
 
       {!loading && !error && data?.length > 0 && (
-        <Table headers={["From", "To", "Days", "State", ...(canApprove ? ["Actions"] : [])]}>
+        <Table headers={["From", "To", "Days", "Reason", "State", ...(canApprove ? ["Actions"] : [])]}>
           {data.map((r) => (
             <tr key={r.id} className="border-t border-gray-100">
               <td className="px-4 py-2 text-gray-600">{r.date_from?.slice(0, 10)}</td>
               <td className="px-4 py-2 text-gray-600">{r.date_to?.slice(0, 10)}</td>
               <td className="px-4 py-2 text-gray-600">{r.number_of_days}</td>
+              <td className="px-4 py-2 text-gray-600">{r.reason || "—"}</td>
               <td className="px-4 py-2 text-gray-600">
                 <Badge variant={statusVariant(r.state)}>{r.state}</Badge>
               </td>
