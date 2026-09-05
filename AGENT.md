@@ -100,7 +100,7 @@ CREATE TABLE contracts (
     wage                  NUMERIC(12,2) NOT NULL CHECK (wage >= 0),
     start_date            DATE NOT NULL,
     end_date              DATE,
-    resource_calendar_id  INT REFERENCES resource_calendars(id),
+    resource_calendar_id  INT REFERENCES resource_calendars(id), -- NULL means fall back to employee's calendar (app logic, not a DB default)
     structure_id          INT,   -- FK added after payroll_structures exists
     state                 VARCHAR(12) DEFAULT 'DRAFT' CHECK (state IN
                             ('DRAFT','RUNNING','EXPIRED','CANCELLED')),
@@ -315,7 +315,7 @@ Approve endpoint deducts the allocation server-side (rule 4) — Frontend never 
 
 `period=` is `YYYY-MM` (e.g. `2026-04`) on both endpoints.
 
-`kpis` returns exactly four numbers: `headcount`, `total_gross` (period), `total_net` (period), `pending_leave_requests`.
+`kpis` returns exactly four numbers: `headcount`, `total_gross` (period), `total_net` (period), `pending_leave_requests`. `total_gross`/`total_net` sum only payslips with `state IN (DONE, PAID)` — never `DRAFT`, to avoid double-counting on recompute and showing unconfirmed numbers as live.
 
 One endpoint per KPI/chart (rule 10) — never one giant `/dashboard` blob. Easier for Frontend to loading-state each widget independently.
 
