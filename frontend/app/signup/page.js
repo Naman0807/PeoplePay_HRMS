@@ -20,7 +20,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("EMPLOYEE");
-  const [employeeId, setEmployeeId] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState(false);
@@ -36,7 +35,7 @@ export default function SignupPage() {
 
     setSubmitting(true);
     try {
-      const result = await signup({ name, login: loginId, password, role, employee_id: employeeId });
+      const result = await signup({ name, login: loginId, password, role });
       if (result.pending) {
         setPending(true);
       } else {
@@ -126,15 +125,6 @@ export default function SignupPage() {
                 : "Requires admin approval before you can sign in — your account won't work until then."
             }
             required
-          />
-
-          <Field
-            id="employee-id"
-            type="number"
-            label="Employee ID (optional)"
-            value={employeeId}
-            onChange={setEmployeeId}
-            hint="Only if HR already gave you one — otherwise leave blank and ask HR to link your account later."
           />
 
           <PrimaryButton type="submit" disabled={submitting} className="w-full">
