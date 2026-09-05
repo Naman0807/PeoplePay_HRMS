@@ -81,7 +81,7 @@ export default function PayrunDetailPage() {
           title={payrun.name}
           actions={<Badge variant={statusVariant(payrun.state)}>{payrun.state}</Badge>}
         />
-        <p className="-mt-4 text-sm text-gray-500">
+        <p className="-mt-4 text-sm text-text-muted">
           {payrun.date_start?.slice(0, 10)} → {payrun.date_end?.slice(0, 10)}
         </p>
       </div>
@@ -117,17 +117,17 @@ export default function PayrunDetailPage() {
       {payslips?.length > 0 && (
         <Table headers={["Employee", "Payslip", "Gross", "Net", "Warning", "Download"]}>
           {payslips.map((p) => (
-            <tr key={p.id} className="border-t border-gray-100">
-              <td className="px-4 py-2 text-gray-900">{employeeName(p.employee_id)}</td>
+            <tr key={p.id}>
+              <td className="px-4 py-2 text-text-primary">{employeeName(p.employee_id)}</td>
               <td className="px-4 py-2">
-                <Link href={`/payslips/${p.id}`} className="font-medium text-gray-900 hover:underline">
+                <Link href={`/payslips/${p.id}`} className="font-medium text-text-primary hover:underline">
                   #{p.id}
                 </Link>
               </td>
-              <td className="px-4 py-2 text-gray-600">
+              <td className="px-4 py-2 text-text-muted">
                 {p.gross_amount != null ? formatter.format(p.gross_amount) : "—"}
               </td>
-              <td className="px-4 py-2 text-gray-600">
+              <td className="px-4 py-2 text-text-muted">
                 {p.net_amount != null ? formatter.format(p.net_amount) : "—"}
               </td>
               <td className="px-4 py-2">
@@ -141,7 +141,7 @@ export default function PayrunDetailPage() {
                 <button
                   type="button"
                   onClick={() => openPayslipPdf(p.id).catch(() => setActionError("Could not open the PDF."))}
-                  className="text-sm font-medium text-gray-700 hover:underline"
+                  className="text-sm font-medium text-text-muted hover:underline"
                 >
                   PDF
                 </button>

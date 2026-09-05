@@ -215,15 +215,15 @@ export default function TimeOffPage() {
           ]}
         >
           {data.map((r) => (
-            <tr key={r.id} className="border-t border-gray-100">
+            <tr key={r.id}>
               {!perms.isEmployee && (
-                <td className="px-4 py-2 font-medium text-gray-900">{r.employee?.name || "—"}</td>
+                <td className="px-4 py-2 font-medium text-text-primary">{r.employee?.name || "—"}</td>
               )}
-              <td className="px-4 py-2 text-gray-600">{r.date_from?.slice(0, 10)}</td>
-              <td className="px-4 py-2 text-gray-600">{r.date_to?.slice(0, 10)}</td>
-              <td className="px-4 py-2 text-gray-600">{r.number_of_days}</td>
-              <td className="px-4 py-2 text-gray-600">{r.reason || "—"}</td>
-              <td className="px-4 py-2 text-gray-600">
+              <td className="px-4 py-2 text-text-muted">{r.date_from?.slice(0, 10)}</td>
+              <td className="px-4 py-2 text-text-muted">{r.date_to?.slice(0, 10)}</td>
+              <td className="px-4 py-2 text-text-muted">{r.number_of_days}</td>
+              <td className="px-4 py-2 text-text-muted">{r.reason || "—"}</td>
+              <td className="px-4 py-2 text-text-muted">
                 <Badge variant={statusVariant(r.state)}>{r.state}</Badge>
               </td>
               {canApprove && (
@@ -233,14 +233,14 @@ export default function TimeOffPage() {
                       <button
                         disabled={actingId === r.id}
                         onClick={() => setConfirm({ id: r.id, action: "approve" })}
-                        className="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-200 disabled:opacity-50"
+                        className="rounded bg-status-success/20 px-2 py-1 text-xs font-medium text-status-success transition-colors hover:bg-status-success/30 disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         disabled={actingId === r.id}
                         onClick={() => setConfirm({ id: r.id, action: "refuse" })}
-                        className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-800 transition-colors hover:bg-red-200 disabled:opacity-50"
+                        className="rounded bg-status-error/20 px-2 py-1 text-xs font-medium text-status-error transition-colors hover:bg-status-error/30 disabled:opacity-50"
                       >
                         Refuse
                       </button>

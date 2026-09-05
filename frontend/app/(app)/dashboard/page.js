@@ -83,25 +83,25 @@ export default function DashboardPage() {
 
       {kpis && (Number(kpis.total_gross) > 0 || Number(kpis.total_net) > 0) && (
         <div className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Gross vs net</h2>
+          <h2 className="mb-3 text-sm font-semibold text-text-muted">Gross vs net</h2>
           <Card
             role="img"
             aria-label="Bar chart comparing total gross and total net payroll for the selected period"
             className="space-y-3"
           >
             {[
-              { label: "Total gross", value: Number(kpis.total_gross), color: "bg-emerald-500" },
-              { label: "Total net", value: Number(kpis.total_net), color: "bg-sky-500" },
+              { label: "Total gross", value: Number(kpis.total_gross), color: "bg-status-success" },
+              { label: "Total net", value: Number(kpis.total_net), color: "bg-status-active" },
             ].map((row) => {
               const max = Math.max(Number(kpis.total_gross), Number(kpis.total_net)) || 1;
               const pct = Math.round((row.value / max) * 100);
               return (
                 <div key={row.label} className="flex items-center gap-3 text-sm">
-                  <div className="w-28 shrink-0 text-gray-600">{row.label}</div>
-                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div className="w-28 shrink-0 text-text-muted">{row.label}</div>
+                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-surface">
                     <div className={`h-full rounded-full ${row.color} transition-all`} style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="w-24 shrink-0 text-right text-gray-600">{formatMoney(row.value)}</div>
+                  <div className="w-24 shrink-0 text-right text-text-muted">{formatMoney(row.value)}</div>
                 </div>
               );
             })}
@@ -109,7 +109,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Salary by department</h2>
+      <h2 className="mb-3 text-sm font-semibold text-text-muted">Salary by department</h2>
       {chartLoading && <Loading />}
       {chartError && <ErrorBox message={chartError} onRetry={refetchChart} />}
       {!chartLoading && !chartError && chart?.length === 0 && <Empty message="No data for this period." />}
@@ -124,14 +124,14 @@ export default function DashboardPage() {
             const pct = maxAmount ? Math.round((amount / maxAmount) * 100) : 0;
             return (
               <div key={row.department} className="flex items-center gap-3 text-sm">
-                <div className="w-28 shrink-0 text-gray-600">{row.department}</div>
-                <div className="h-4 flex-1 overflow-hidden rounded-full bg-gray-100">
+                <div className="w-28 shrink-0 text-text-muted">{row.department}</div>
+                <div className="h-4 flex-1 overflow-hidden rounded-full bg-surface">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    className="h-full rounded-full bg-status-success transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div className="w-24 shrink-0 text-right text-gray-600">{formatMoney(amount)}</div>
+                <div className="w-24 shrink-0 text-right text-text-muted">{formatMoney(amount)}</div>
               </div>
             );
           })}
@@ -150,8 +150,8 @@ function formatMoney(value) {
 function KpiCard({ label, value }) {
   return (
     <Card>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">{value ?? "—"}</div>
+      <div className="text-xs text-text-muted">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-text-primary">{value ?? "—"}</div>
     </Card>
   );
 }

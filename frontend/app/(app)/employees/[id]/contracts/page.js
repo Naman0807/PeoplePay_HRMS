@@ -101,7 +101,7 @@ export default function EmployeeContractsPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && <ErrorBox message={formError} />}
             {overlapDetail && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <div className="rounded-md border border-status-warning/30 bg-status-warning/10 px-3 py-2 text-sm text-status-warning">
                 <b>Contract overlap (409):</b> {overlapDetail}
               </div>
             )}
@@ -150,12 +150,12 @@ export default function EmployeeContractsPage() {
       {!loading && !error && data?.length > 0 && (
         <Table headers={["Reference", "Wage", "Start", "End", "State"]}>
           {data.map((c) => (
-            <tr key={c.id} className="border-t border-gray-100">
-              <td className="px-4 py-2 font-medium text-gray-900">{c.reference}</td>
-              <td className="px-4 py-2 text-gray-600">{currency.format(c.wage)}</td>
-              <td className="px-4 py-2 text-gray-600">{c.start_date?.slice(0, 10)}</td>
-              <td className="px-4 py-2 text-gray-600">{c.end_date?.slice(0, 10) || "—"}</td>
-              <td className="px-4 py-2 text-gray-600">
+            <tr key={c.id}>
+              <td className="px-4 py-2 font-medium text-text-primary">{c.reference}</td>
+              <td className="px-4 py-2 text-text-muted">{currency.format(c.wage)}</td>
+              <td className="px-4 py-2 text-text-muted">{c.start_date?.slice(0, 10)}</td>
+              <td className="px-4 py-2 text-text-muted">{c.end_date?.slice(0, 10) || "—"}</td>
+              <td className="px-4 py-2 text-text-muted">
                 <Badge variant={statusVariant(c.state)}>{c.state}</Badge>
               </td>
             </tr>

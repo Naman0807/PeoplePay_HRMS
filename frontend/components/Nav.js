@@ -34,16 +34,16 @@ export default function Nav() {
 
   const linkClass = (href) =>
     `text-sm font-medium transition-colors ${
-      isActive(href) ? "text-gray-900" : "text-gray-500 hover:text-gray-900"
+      isActive(href) ? "text-status-active" : "text-text-muted hover:text-text-primary"
     }`;
 
   return (
     <nav
       aria-label="Main navigation"
-      className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3"
+      className="sticky top-0 z-30 flex items-center justify-between rounded-2xl border border-border bg-surface px-6 py-3"
     >
       <div className="flex items-center gap-5">
-        <span className="text-sm font-semibold text-gray-900">PeoplePay360</span>
+        <span className="text-sm font-semibold text-text-primary">PeoplePay360</span>
         <div className="hidden items-center gap-5 md:flex">
           {links.map((l) => (
             <Link
@@ -58,7 +58,7 @@ export default function Nav() {
         </div>
       </div>
 
-      <div className="hidden items-center gap-3 text-sm text-gray-500 md:flex">
+      <div className="hidden items-center gap-3 text-sm text-text-muted md:flex">
         {user && (
           <span>
             {user.name} · {user.role}
@@ -67,7 +67,7 @@ export default function Nav() {
         <button
           type="button"
           onClick={handleLogout}
-          className="rounded bg-gray-100 px-3 py-1 text-xs font-medium transition-colors hover:bg-gray-200"
+          className="rounded bg-primary px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
         >
           Log out
         </button>
@@ -75,7 +75,7 @@ export default function Nav() {
 
       <div className="flex items-center gap-3 md:hidden">
         {user && (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-text-muted">
             {user.name} · {user.role}
           </span>
         )}
@@ -85,7 +85,7 @@ export default function Nav() {
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
-          className="rounded p-1 text-gray-700 hover:bg-gray-100"
+          className="rounded p-1 text-text-primary hover:bg-surface/50"
         >
           <svg
             className="h-5 w-5"
@@ -115,7 +115,7 @@ export default function Nav() {
       {menuOpen && (
         <div
           id="mobile-menu"
-          className="absolute left-0 right-0 top-full border-b border-gray-200 bg-white px-6 py-3 shadow-md md:hidden"
+          className="absolute left-0 right-0 top-full rounded-b-2xl border border-t-0 border-border bg-surface px-6 py-3 shadow-md md:hidden"
         >
           <div className="flex flex-col gap-1">
             {links.map((l) => (
@@ -126,8 +126,8 @@ export default function Nav() {
                 aria-current={isActive(l.href) ? "page" : undefined}
                 className={`rounded px-2 py-2 transition-colors ${
                   isActive(l.href)
-                    ? "bg-gray-50 text-gray-900"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-background text-status-active"
+                    : "text-text-muted hover:bg-background hover:text-text-primary"
                 }`}
               >
                 {l.label}
@@ -136,7 +136,7 @@ export default function Nav() {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-2 rounded bg-gray-100 px-2 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+              className="mt-2 rounded bg-primary px-2 py-2 text-left text-sm font-medium text-white transition-colors hover:bg-primary-hover"
             >
               Log out
             </button>

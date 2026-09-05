@@ -54,19 +54,19 @@ function PayrunRow({ payrun: p }) {
   const total = detail?.payslips?.reduce((sum, ps) => sum + Number(ps.gross_amount ?? 0), 0);
 
   return (
-    <tr className="border-t border-gray-100 hover:bg-gray-50">
+    <tr>
       <td className="px-4 py-2">
-        <Link href={`/payruns/${p.id}`} className="font-medium text-gray-900 hover:underline">
+        <Link href={`/payruns/${p.id}`} className="font-medium text-text-primary hover:underline">
           {p.name}
         </Link>
       </td>
-      <td className="px-4 py-2 text-gray-600">
+      <td className="px-4 py-2 text-text-muted">
         {p.date_start?.slice(0, 10)} → {p.date_end?.slice(0, 10)}
       </td>
-      <td className="px-4 py-2 text-gray-600">
+      <td className="px-4 py-2 text-text-muted">
         {loading ? "…" : detail?.payslips?.length ? currency.format(total) : "—"}
       </td>
-      <td className="px-4 py-2 text-gray-600">
+      <td className="px-4 py-2 text-text-muted">
         <Badge variant={statusVariant(p.state)}>{p.state}</Badge>
       </td>
     </tr>

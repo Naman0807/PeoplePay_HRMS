@@ -45,7 +45,7 @@ export default function PayslipPage() {
             <button
               type="button"
               onClick={handleDownload}
-              className="text-sm font-medium text-gray-700 hover:underline"
+              className="text-sm font-medium text-text-muted hover:underline"
             >
               Download PDF →
             </button>
@@ -57,21 +57,21 @@ export default function PayslipPage() {
       <Card className="mb-4">
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <div className="text-xs text-gray-500">Period</div>
+            <div className="text-xs text-text-muted">Period</div>
             <div className="mt-0.5">{payslip.date_from?.slice(0, 10)} → {payslip.date_to?.slice(0, 10)}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">State</div>
+            <div className="text-xs text-text-muted">State</div>
             <div className="mt-1">
               <Badge variant={statusVariant(payslip.state)}>{payslip.state}</Badge>
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Gross</div>
+            <div className="text-xs text-text-muted">Gross</div>
             <div className="mt-0.5">{payslip.gross_amount != null ? formatter.format(payslip.gross_amount) : "—"}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Net</div>
+            <div className="text-xs text-text-muted">Net</div>
             <div className="mt-0.5">{payslip.net_amount != null ? formatter.format(payslip.net_amount) : "—"}</div>
           </div>
           {payslip.warning_code && (
@@ -85,11 +85,11 @@ export default function PayslipPage() {
       {/* line_ids arrives in the sequence the salary rule engine produced it — never re-sorted here. */}
       <Table headers={["Rule", "Amount"]}>
         {payslip.line_ids?.map((line) => (
-          <tr key={line.id} className="border-t border-gray-100">
-            <td className="px-4 py-2 text-gray-800">
-              {line.rule_name} <span className="text-xs text-gray-400">({line.rule_code})</span>
+          <tr key={line.id}>
+            <td className="px-4 py-2 text-text-primary">
+              {line.rule_name} <span className="text-xs text-text-muted">({line.rule_code})</span>
             </td>
-            <td className="px-4 py-2 text-gray-600">
+            <td className="px-4 py-2 text-text-muted">
               {line.amount != null ? formatter.format(line.amount) : "—"}
             </td>
           </tr>

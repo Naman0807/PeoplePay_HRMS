@@ -121,9 +121,9 @@ export default function NewPayrunPage() {
           {eligError && <ErrorBox message={eligError} onRetry={refetch} />}
           {!eligLoading && !eligError && eligible?.length === 0 && <EmptyState message="No eligible employees for this period." />}
           {!eligLoading && !eligError && eligible?.length > 0 && (
-            <ul className="rounded-lg border border-gray-200 p-2 text-sm">
+            <ul className="rounded-lg border border-border p-2 text-sm">
               {eligible.map((e) => (
-                <li key={e.employee_id} className="border-b border-gray-100 py-1.5 last:border-0">
+                <li key={e.employee_id} className="border-b border-border/50 py-1.5 last:border-0">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
@@ -139,14 +139,14 @@ export default function NewPayrunPage() {
                       }
                     />
                     <span>{e.name}</span>
-                    <span className="text-gray-500">· {e.department || "—"}</span>
+                    <span className="text-text-muted">· {e.department || "—"}</span>
                   </label>
                 </li>
               ))}
             </ul>
           )}
           {selectedIds.length === 0 && eligible?.length > 0 && (
-            <p role="alert" className="mt-2 text-sm text-red-700">
+            <p role="alert" className="mt-2 text-sm text-status-error">
               Select at least one employee to continue.
             </p>
           )}
