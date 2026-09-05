@@ -18,6 +18,22 @@ const STATES = ["TO_APPROVE", "APPROVED", "REFUSED"] as const;
 const inclusiveDays = (from: Date, to: Date) =>
   Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
 
+/**
+ * The leave types a request can be filed against. Read-only: type CRUD is cut for
+ * v1 and types are seeded, but the list has to be readable or the form is reduced to
+ * asking people to type a numeric id.
+ */
+leaveRoutes.get(
+  "/types",
+  ah(async (_req, res) => {
+    const types = await prisma.leaveType.findMany({
+      where: { active: true },
+      orderBy: { id: "asc" },
+    });
+    return ok(res, types);
+  })
+);
+
 leaveRoutes.get(
   "/",
   ah(async (req, res) => {

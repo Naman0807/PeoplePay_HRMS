@@ -112,17 +112,29 @@ async function main() {
     });
   }
 
+  // Loss of Pay and Other carry no allocation: they are unpaid, so there is no
+  // balance to draw down and approval never needs a deduction.
   const leaveTypes = [
-    { id: 1, name: "Paid Time Off", days: 18 },
-    { id: 2, name: "Sick Leave", days: 8 },
+    { id: 1, name: "Paid Time Off", days: 18, requires_allocation: true },
+    { id: 2, name: "Sick Leave", days: 8, requires_allocation: true },
+    { id: 3, name: "Casual Leave", days: 6, requires_allocation: true },
+    { id: 4, name: "Loss of Pay", days: 0, requires_allocation: false },
+    { id: 5, name: "Other", days: 0, requires_allocation: false },
   ];
 
   for (const lt of leaveTypes) {
     await prisma.leaveType.upsert({
       where: { id: lt.id },
-      update: {},
-      create: { id: lt.id, name: lt.name, request_unit: "DAYS", requires_allocation: true },
+      update: { name: lt.name, requires_allocation: lt.requires_allocation },
+      create: {
+        id: lt.id,
+        name: lt.name,
+        request_unit: "DAYS",
+        requires_allocation: lt.requires_allocation,
+      },
     });
+
+    if (!lt.requires_allocation) continue;
 
     for (const employee of employees) {
       const existing = await prisma.leaveAllocation.findFirst({
