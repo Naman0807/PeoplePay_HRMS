@@ -143,6 +143,16 @@ async function main() {
     }
   }
 
+  // Rows above are inserted with explicit ids so re-running the seed is idempotent,
+  // but that leaves each SERIAL sequence at 1 and the next app-created row collides on
+  // the primary key. Advance every sequence past the ids we just wrote.
+  for (const table of ["resource_calendars", "payroll_structures", "leave_types", "salary_rules"]) {
+    await prisma.$executeRawUnsafe(
+      `SELECT setval(pg_get_serial_sequence('${table}', 'id'),
+         GREATEST((SELECT COALESCE(MAX(id), 1) FROM ${table}), 1))`
+    );
+  }
+
   console.log(
     `seeded: ${employees.length} employees + contracts, ${RULES.length} salary rules, ` +
       `${USERS.length} users, ${leaveTypes.length} leave types with allocations`
