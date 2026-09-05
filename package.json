@@ -1,0 +1,25 @@
+{
+  "name": "peoplepay360",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@peoplepay360/api",
+    "dev:web": "npm run dev --workspace=@peoplepay360/web",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test --workspace=@peoplepay360/api",
+    "test:web": "npm run test --workspace=@peoplepay360/web",
+    "test:e2e": "node e2e/run.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "dotenv-cli": "^7.4.0",
+    "puppeteer": "^25.10.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
