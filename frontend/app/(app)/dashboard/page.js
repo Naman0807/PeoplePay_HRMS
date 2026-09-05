@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useFetch } from "@/lib/useFetch";
 import { Loading, ErrorBox, Empty } from "@/components/StatusStates";
 import { Card, PageHeader, Field, EmptyState } from "@/components/ui";
@@ -12,9 +22,37 @@ const currency = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+// Hex values matching the design tokens in globals.css — recharts needs real
+// colors, not Tailwind class names, on its SVG props.
+const COLOR_GRID = "#334155"; // border
+const COLOR_MUTED = "#94a3b8"; // text-muted
+const COLOR_SURFACE = "#1e293b"; // surface
+const COLOR_SUCCESS = "#4ade80"; // status-success
+const COLOR_ACTIVE = "#818cf8"; // status-active
+
 function currentPeriod() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMoney(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return value ?? "—";
+  return currency.format(num);
+}
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-lg">
+      <div className="mb-1 text-text-muted">{label}</div>
+      {payload.map((p) => (
+        <div key={p.dataKey} className="font-medium text-text-primary">
+          {formatMoney(p.value)}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -32,8 +70,6 @@ export default function DashboardPage() {
   const { data: kpis, loading: kpiLoading, error: kpiError, refetch: refetchKpis } = useFetch(kpiUrl);
   const { data: chart, loading: chartLoading, error: chartError, refetch: refetchChart } = useFetch(chartUrl);
 
-  const maxAmount = chart?.length ? Math.max(...chart.map((d) => Number(d.total_gross ?? d.amount ?? 0))) : 0;
-
   // The backend 403s this whole section for an EMPLOYEE — don't even fire the
   // requests (see kpiUrl/chartUrl above), and show one clean message instead
   // of two stacked error banners from calls that were never going to succeed.
@@ -46,26 +82,25 @@ export default function DashboardPage() {
     );
   }
 
+  const grossNetData = kpis
+    ? [
+        { name: "Total gross", value: Number(kpis.total_gross), color: COLOR_SUCCESS },
+        { name: "Total net", value: Number(kpis.total_net), color: COLOR_ACTIVE },
+      ]
+    : [];
+
+  const departmentData = (chart || []).map((row) => ({
+    name: row.department,
+    value: Number(row.total_gross ?? row.amount ?? 0),
+  }));
+
   return (
     <div>
       <PageHeader title="Dashboard" />
 
       <div className="mb-6 flex flex-col sm:flex-row gap-3">
-        <Field
-          id="period"
-          type="month"
-          label="Period"
-          value={period}
-          onChange={setPeriod}
-          className="sm:w-44"
-        />
-        <Field
-          id="department"
-          label="Department"
-          value={department}
-          onChange={setDepartment}
-          placeholder="All"
-        />
+        <Field id="period" type="month" label="Period" value={period} onChange={setPeriod} className="sm:w-44" />
+        <Field id="department" label="Department" value={department} onChange={setDepartment} placeholder="All" />
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -84,19 +119,21 @@ export default function DashboardPage() {
       {kpis && (Number(kpis.total_gross) > 0 || Number(kpis.total_net) > 0) && (
         <div className="mb-8">
           <h2 className="mb-3 text-sm font-semibold text-text-muted">Gross vs net</h2>
-          <Card
-            role="img"
-            aria-label="Bar chart comparing total gross and total net payroll for the selected period"
-          >
-            <div className="flex items-end justify-center gap-10">
-              {[
-                { label: "Total gross", value: Number(kpis.total_gross), color: "bg-status-success" },
-                { label: "Total net", value: Number(kpis.total_net), color: "bg-status-active" },
-              ].map((row) => {
-                const max = Math.max(Number(kpis.total_gross), Number(kpis.total_net)) || 1;
-                const pct = Math.round((row.value / max) * 100);
-                return <VerticalBar key={row.label} label={row.label} value={formatMoney(row.value)} pct={pct} color={row.color} />;
-              })}
+          <Card>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={grossNetData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={COLOR_GRID} vertical={false} />
+                  <XAxis dataKey="name" stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={{ stroke: COLOR_GRID }} />
+                  <YAxis stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={false} width={40} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: COLOR_SURFACE }} />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={64}>
+                    {grossNetData.map((d) => (
+                      <Cell key={d.name} fill={d.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </Card>
         </div>
@@ -105,47 +142,22 @@ export default function DashboardPage() {
       <h2 className="mb-3 text-sm font-semibold text-text-muted">Salary by department</h2>
       {chartLoading && <Loading />}
       {chartError && <ErrorBox message={chartError} onRetry={refetchChart} />}
-      {!chartLoading && !chartError && chart?.length === 0 && <Empty message="No data for this period." />}
-      {!chartLoading && !chartError && chart?.length > 0 && (
-        <Card
-          role="img"
-          aria-label="Bar chart of total gross salary by department for the selected period"
-        >
-          <div className="flex items-end justify-center gap-8 overflow-x-auto">
-            {chart.map((row) => {
-              const amount = Number(row.total_gross ?? row.amount ?? 0);
-              const pct = maxAmount ? Math.round((amount / maxAmount) * 100) : 0;
-              return (
-                <VerticalBar
-                  key={row.department}
-                  label={row.department}
-                  value={formatMoney(amount)}
-                  pct={pct}
-                  color="bg-status-success"
-                />
-              );
-            })}
+      {!chartLoading && !chartError && departmentData.length === 0 && <Empty message="No data for this period." />}
+      {!chartLoading && !chartError && departmentData.length > 0 && (
+        <Card>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={departmentData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={COLOR_GRID} vertical={false} />
+                <XAxis dataKey="name" stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={{ stroke: COLOR_GRID }} />
+                <YAxis stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={false} width={40} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: COLOR_SURFACE }} />
+                <Bar dataKey="value" fill={COLOR_SUCCESS} radius={[6, 6, 0, 0]} maxBarSize={64} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       )}
-    </div>
-  );
-}
-
-function formatMoney(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return value ?? "—";
-  return currency.format(num);
-}
-
-function VerticalBar({ label, value, pct, color }) {
-  return (
-    <div className="flex w-16 shrink-0 flex-col items-center gap-2">
-      <div className="text-xs text-text-muted">{value}</div>
-      <div className="flex h-40 w-8 items-end overflow-hidden rounded-t-md bg-surface">
-        <div className={`w-full rounded-t-md ${color} transition-all`} style={{ height: `${pct}%` }} />
-      </div>
-      <div className="text-center text-xs text-text-muted">{label}</div>
     </div>
   );
 }
