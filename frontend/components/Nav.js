@@ -17,6 +17,15 @@ const LINKS = [
   { href: "/admin/pending-users", label: "Approvals", requires: "canApproveSignups" },
 ];
 
+function initials(name) {
+  return (name || "")
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 export default function Nav() {
   const router = useRouter();
   const pathname = usePathname();
@@ -35,41 +44,49 @@ export default function Nav() {
   }
 
   const linkClass = (href) =>
-    `text-sm font-medium transition-colors ${
-      isActive(href) ? "text-status-active" : "text-text-muted hover:text-text-primary"
+    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+      isActive(href) ? "bg-primary/15 text-status-active" : "text-text-muted hover:bg-surface/60 hover:text-text-primary"
     }`;
 
   return (
     <nav
       aria-label="Main navigation"
-      className="sticky top-0 z-30 flex items-center justify-between rounded-2xl border border-border bg-surface px-6 py-3"
+      className="sticky top-0 z-30 flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-2.5 shadow-sm shadow-black/20"
     >
-      <div className="flex items-center gap-5">
-        <span className="text-sm font-semibold text-text-primary">PeoplePay360</span>
-        <div className="hidden items-center gap-5 md:flex">
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-white">
+            PP
+          </span>
+          <span className="hidden text-sm font-semibold tracking-tight text-text-primary sm:inline">
+            PeoplePay360
+          </span>
+        </Link>
+        <div className="hidden h-6 w-px bg-border md:block" />
+        <div className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              aria-current={isActive(l.href) ? "page" : undefined}
-              className={linkClass(l.href)}
-            >
+            <Link key={l.href} href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={linkClass(l.href)}>
               {l.label}
             </Link>
           ))}
         </div>
       </div>
 
-      <div className="hidden items-center gap-3 text-sm text-text-muted md:flex">
+      <div className="hidden items-center gap-3 md:flex">
         {user && (
-          <span>
-            {user.name} · {user.role}
-          </span>
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background/40 py-1 pl-1 pr-3">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#ff8a7a] text-[10px] font-bold text-white">
+              {initials(user.name)}
+            </span>
+            <span className="text-xs text-text-muted">
+              <span className="font-medium text-text-primary">{user.name}</span> · {user.role}
+            </span>
+          </div>
         )}
         <button
           type="button"
           onClick={handleLogout}
-          className="rounded bg-primary px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
+          className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
         >
           Log out
         </button>
@@ -77,8 +94,8 @@ export default function Nav() {
 
       <div className="flex items-center gap-3 md:hidden">
         {user && (
-          <span className="text-sm text-text-muted">
-            {user.name} · {user.role}
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ff8a7a] text-[10px] font-bold text-white">
+            {initials(user.name)}
           </span>
         )}
         <button
@@ -89,26 +106,11 @@ export default function Nav() {
           aria-controls="mobile-menu"
           className="rounded p-1 text-text-primary hover:bg-surface/50"
         >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
             {menuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
         </button>
@@ -117,9 +119,14 @@ export default function Nav() {
       {menuOpen && (
         <div
           id="mobile-menu"
-          className="absolute left-0 right-0 top-full rounded-b-2xl border border-t-0 border-border bg-surface px-6 py-3 shadow-md md:hidden"
+          className="absolute left-0 right-0 top-full rounded-b-2xl border border-t-0 border-border bg-surface px-4 py-3 shadow-md md:hidden"
         >
           <div className="flex flex-col gap-1">
+            {user && (
+              <div className="mb-1 px-2 text-xs text-text-muted">
+                <span className="font-medium text-text-primary">{user.name}</span> · {user.role}
+              </div>
+            )}
             {links.map((l) => (
               <Link
                 key={l.href}

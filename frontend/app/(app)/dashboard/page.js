@@ -116,48 +116,52 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {kpis && (Number(kpis.total_gross) > 0 || Number(kpis.total_net) > 0) && (
-        <div className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold text-text-muted">Gross vs net</h2>
-          <Card>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={grossNetData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={COLOR_GRID} vertical={false} />
-                  <XAxis dataKey="name" stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={{ stroke: COLOR_GRID }} />
-                  <YAxis stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={false} width={40} />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: COLOR_SURFACE }} />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={64}>
-                    {grossNetData.map((d) => (
-                      <Cell key={d.name} fill={d.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      <h2 className="mb-3 text-sm font-semibold text-text-muted">Salary by department</h2>
-      {chartLoading && <Loading />}
-      {chartError && <ErrorBox message={chartError} onRetry={refetchChart} />}
-      {!chartLoading && !chartError && departmentData.length === 0 && <Empty message="No data for this period." />}
-      {!chartLoading && !chartError && departmentData.length > 0 && (
-        <Card>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={departmentData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={COLOR_GRID} vertical={false} />
-                <XAxis dataKey="name" stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={{ stroke: COLOR_GRID }} />
-                <YAxis stroke={COLOR_MUTED} fontSize={12} tickLine={false} axisLine={false} width={40} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: COLOR_SURFACE }} />
-                <Bar dataKey="value" fill={COLOR_SUCCESS} radius={[6, 6, 0, 0]} maxBarSize={64} />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {kpis && (Number(kpis.total_gross) > 0 || Number(kpis.total_net) > 0) && (
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-text-muted">Gross vs net</h2>
+            <Card className="p-3">
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={grossNetData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLOR_GRID} vertical={false} />
+                    <XAxis dataKey="name" stroke={COLOR_MUTED} fontSize={11} tickLine={false} axisLine={{ stroke: COLOR_GRID }} />
+                    <YAxis stroke={COLOR_MUTED} fontSize={11} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: COLOR_SURFACE }} />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                      {grossNetData.map((d) => (
+                        <Cell key={d.name} fill={d.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
           </div>
-        </Card>
-      )}
+        )}
+
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-text-muted">Salary by department</h2>
+          {chartLoading && <Loading />}
+          {chartError && <ErrorBox message={chartError} onRetry={refetchChart} />}
+          {!chartLoading && !chartError && departmentData.length === 0 && <Empty message="No data for this period." />}
+          {!chartLoading && !chartError && departmentData.length > 0 && (
+            <Card className="p-3">
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={departmentData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLOR_GRID} vertical={false} />
+                    <XAxis dataKey="name" stroke={COLOR_MUTED} fontSize={11} tickLine={false} axisLine={{ stroke: COLOR_GRID }} />
+                    <YAxis stroke={COLOR_MUTED} fontSize={11} tickLine={false} axisLine={false} width={36} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: COLOR_SURFACE }} />
+                    <Bar dataKey="value" fill={COLOR_SUCCESS} radius={[6, 6, 0, 0]} maxBarSize={48} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
