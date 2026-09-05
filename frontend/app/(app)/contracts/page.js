@@ -232,7 +232,11 @@ export default function ContractsPage() {
         <Table headers={["Contract", "Employee", "Start", "End", "Wage / Month", "Status"]}>
           {filtered.map((c) => (
             <tr key={c.id}>
-              <td className="px-4 py-3 font-medium text-text-primary">{c.reference}</td>
+              <td className="px-4 py-3 font-medium text-text-primary">
+                <Link href={`/contracts/${c.id}`} className="hover:underline">
+                  {c.reference}
+                </Link>
+              </td>
               <td className="px-4 py-3 text-text-primary">
                 <Link href={`/employees/${c.employee_id}/contracts`} className="hover:underline">
                   {c.employee_name}

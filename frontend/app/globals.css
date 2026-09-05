@@ -8,9 +8,9 @@
      tokens below are kept for now so not-yet-refactored pages don't break;
      new components should use these instead. */
   --surface: #1e293b;
-  --border-color: #475569;
-  --primary: #3b82f6;
-  --primary-hover: #60a5fa;
+  --border-color: #334155;
+  --primary: #2563eb;
+  --primary-hover: #3b82f6;
   --text-primary: #f8fafc;
   --text-muted: #94a3b8;
   --status-success: #4ade80;
