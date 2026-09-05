@@ -3,6 +3,7 @@
 import { useState } from "react";
 import api from "@/lib/api";
 import { getUser } from "@/lib/auth";
+import { permissions } from "@/lib/permissions";
 import { useFetch } from "@/lib/useFetch";
 import {
   PageHeader,
@@ -24,6 +25,7 @@ const EMPTY_FORM = { leave_type_id: "", date_from: "", date_to: "", number_of_da
 const CAN_APPROVE_ROLES = ["HR_MANAGER", "HR_PAYROLL_MANAGER", "ADMIN"];
 
 export default function TimeOffPage() {
+  const perms = permissions();
   const { data: employees, loading: empLoading, error: empError } = useFetch("/api/employees");
   // An employee files only for themselves, so preselect them. Leaving this empty
   // meant the form posted whichever person the dropdown happened to land on, and the
