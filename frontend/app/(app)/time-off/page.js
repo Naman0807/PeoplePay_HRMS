@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import api from "@/lib/api";
-import { getUser } from "@/lib/auth";
 import { permissions } from "@/lib/permissions";
 import { useFetch } from "@/lib/useFetch";
 import {
@@ -22,7 +21,6 @@ import {
 } from "@/components/ui";
 
 const EMPTY_FORM = { leave_type_id: "", date_from: "", date_to: "", number_of_days: "", reason: "" };
-const CAN_APPROVE_ROLES = ["HR_MANAGER", "HR_PAYROLL_MANAGER", "ADMIN"];
 
 export default function TimeOffPage() {
   const perms = permissions();
@@ -48,8 +46,9 @@ export default function TimeOffPage() {
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const user = getUser();
-  const canApprove = user && CAN_APPROVE_ROLES.includes(user.role);
+  // Matches the backend's actual APPROVER_ROLES (HR_MANAGER, plus ADMIN which
+  // bypasses every role check) — not a separately maintained list that can drift.
+  const canApprove = perms.canApproveLeave;
 
   const { data: leaveTypes } = useFetch("/api/leave-requests/types");
   const selectedType = (leaveTypes || []).find(
