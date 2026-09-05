@@ -5,13 +5,13 @@ import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { assertSelfOrPrivileged, scopeToSelf } from "../lib/rbac";
+import { assertSelfOrPrivileged, HR_ADMIN_ROLES, scopeToSelf } from "../lib/rbac";
 
 export const leaveRoutes = Router();
 
 leaveRoutes.use(requireAuth);
 
-const APPROVER_ROLES = ["HR_MANAGER"] as const;
+const APPROVER_ROLES = HR_ADMIN_ROLES;
 const STATES = ["TO_APPROVE", "APPROVED", "REFUSED"] as const;
 
 /** Whole days inclusive of both ends — a one-day leave is 1, not 0. */

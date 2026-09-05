@@ -6,18 +6,19 @@ import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/respo
 import { computeLines, DEFAULT_DAYS_PER_WEEK, workingDays } from "../lib/payroll";
 import { parseDate, parseId, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { PAYROLL_VIEW_ROLES } from "../lib/rbac";
+import { PAYROLL_ROLES } from "../lib/rbac";
 
 export const payrunRoutes = Router();
 
 payrunRoutes.use(requireAuth);
 // A payrun exposes the whole organisation's payroll, so no route here is readable
 // by a plain EMPLOYEE — not only the ones that change state.
-payrunRoutes.use(requireRole(...PAYROLL_VIEW_ROLES));
+payrunRoutes.use(requireRole(...PAYROLL_ROLES));
 
-const PAYROLL_ROLES = ["HR_PAYROLL_USER", "HR_PAYROLL_MANAGER"] as const;
-/** Confirming and paying a run is a manager action; computing is not. */
-const PAYROLL_MANAGER = ["HR_PAYROLL_MANAGER"] as const;
+
+// Confirm and mark-paid are updates to a payrun, and the spec grants HR_PAYROLL_USER
+// update access to Payruns, so both payroll roles may run the whole lifecycle. The
+// two roles differ on Salary Structure and Rule configuration instead.
 
 /** Contracts eligible for a period: RUNNING and overlapping the payrun dates. */
 const eligibleContractWhere = (date_start: Date, date_end: Date): Prisma.ContractWhereInput => ({
@@ -259,7 +260,7 @@ payrunRoutes.post(
 
 payrunRoutes.post(
   "/:id/confirm",
-  requireRole(...PAYROLL_MANAGER),
+  requireRole(...PAYROLL_ROLES),
   ah(async (req, res) => {
     const id = parseId(req.params.id);
     const payrun = await prisma.payslipRun.findUnique({
@@ -285,7 +286,7 @@ payrunRoutes.post(
 
 payrunRoutes.post(
   "/:id/mark-paid",
-  requireRole(...PAYROLL_MANAGER),
+  requireRole(...PAYROLL_ROLES),
   ah(async (req, res) => {
     const id = parseId(req.params.id);
     const payrun = await prisma.payslipRun.findUnique({ where: { id } });

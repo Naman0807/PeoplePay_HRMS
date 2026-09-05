@@ -5,7 +5,7 @@ import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, parseOptionalDate, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { assertSelfOrPrivileged, scopeToSelf } from "../lib/rbac";
+import { assertSelfOrPrivileged, HR_ADMIN_ROLES, scopeToSelf } from "../lib/rbac";
 
 export const attendanceRoutes = Router();
 
@@ -14,8 +14,8 @@ attendanceRoutes.use(requireAuth);
 // An EMPLOYEE may record their own attendance; assertSelfOrPrivileged below stops
 // them recording anyone else's. HR_MANAGER records on anyone's behalf. Payroll roles
 // are deliberately absent — they run payroll, they do not keep the time book.
-const WRITE_ROLES = ["HR_MANAGER", "EMPLOYEE"] as const;
-const EDIT_ROLES = ["HR_MANAGER"] as const;
+const WRITE_ROLES = [...HR_ADMIN_ROLES, "EMPLOYEE"] as const;
+const EDIT_ROLES = HR_ADMIN_ROLES;
 const STATUSES = ["PRESENT", "ABSENT"] as const;
 
 /**

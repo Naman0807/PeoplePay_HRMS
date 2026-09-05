@@ -14,6 +14,8 @@ let server: Server;
 let base: string;
 let employeeToken: string; // rohit, EMPLOYEE, employee_id 2
 let managerToken: string; // asha, HR_MANAGER, employee_id 1
+let payrollToken: string; // priya, HR_PAYROLL_MANAGER
+let payrollUserToken: string; // vikram, HR_PAYROLL_USER
 let otherEmployeeId: number;
 let ownPayslipId: number;
 let otherPayslipId: number;
@@ -49,6 +51,8 @@ before(async () => {
 
   employeeToken = await login("rohit@peoplepay360.test");
   managerToken = await login("asha@peoplepay360.test");
+  payrollToken = await login("priya@peoplepay360.test");
+  payrollUserToken = await login("vikram@peoplepay360.test");
 
   const rohit = await prisma.employee.findUniqueOrThrow({
     where: { work_email: "rohit@peoplepay360.test" },
@@ -85,9 +89,44 @@ test("an employee cannot download another employee's payslip PDF", async () => {
   assert.equal(res.status, 403);
 });
 
-test("a manager can read any payslip", async () => {
-  const res = await get(`/api/payslips/${otherPayslipId}`, managerToken);
-  assert.equal(res.status, 200);
+test("payroll staff can read any payslip, HR_MANAGER cannot", async () => {
+  const payroll = await get(`/api/payslips/${otherPayslipId}`, payrollToken);
+  assert.equal(payroll.status, 200);
+
+  // The spec gives HR_MANAGER "no access to payroll features".
+  const hr = await get(`/api/payslips/${otherPayslipId}`, managerToken);
+  assert.equal(hr.status, 403);
+});
+
+test("HR_MANAGER is kept out of payroll entirely", async () => {
+  for (const path of [
+    "/api/payruns",
+    "/api/dashboard/kpis?period=2026-03",
+    "/api/dashboard/salary-by-department?period=2026-03",
+  ]) {
+    const res = await get(path, managerToken);
+    assert.equal(res.status, 403, `${path} must be closed to HR_MANAGER`);
+  }
+});
+
+test("HR_PAYROLL_USER inherits every HR_MANAGER permission", async () => {
+  // The ladder is cumulative: a payroll user administers people as well as payroll.
+  const email = `ladder.${Date.now()}@peoplepay360.test`;
+  const created = await post("/api/employees", payrollUserToken, {
+    name: "Ladder Probe",
+    work_email: email,
+  });
+  assert.equal(created.status, 201, "a payroll user may create employees");
+
+  const attendance = await post("/api/attendances", payrollUserToken, {
+    employee_id: created.body.data.id,
+    check_in: "2026-04-15T09:00:00Z",
+    check_out: "2026-04-15T17:00:00Z",
+  });
+  assert.equal(attendance.status, 201, "a payroll user may record attendance");
+
+  await prisma.attendance.deleteMany({ where: { employee_id: created.body.data.id } });
+  await prisma.employee.delete({ where: { id: created.body.data.id } });
 });
 
 test("an employee cannot read another employee's contracts or wage", async () => {
@@ -160,11 +199,22 @@ test("an employee cannot read payroll-wide data", async () => {
   }
 });
 
-test("a manager still reads payroll-wide data", async () => {
+test("payroll staff still read payroll-wide data", async () => {
   for (const path of ["/api/payruns", "/api/dashboard/kpis?period=2026-03"]) {
-    const res = await get(path, managerToken);
-    assert.equal(res.status, 200, `${path} must stay readable by HR_MANAGER`);
+    const res = await get(path, payrollToken);
+    assert.equal(res.status, 200, `${path} must stay readable by payroll roles`);
   }
+});
+
+test("an employee sees only their own profile", async () => {
+  const own = await get(`/api/employees/${(await prisma.employee.findUniqueOrThrow({ where: { work_email: "rohit@peoplepay360.test" } })).id}`, employeeToken);
+  assert.equal(own.status, 200);
+
+  const other = await get(`/api/employees/${otherEmployeeId}`, employeeToken);
+  assert.equal(other.status, 403);
+
+  const list = await get("/api/employees", employeeToken);
+  assert.equal(list.body.meta.total_records, 1, "the directory is narrowed to themselves");
 });
 
 test("an employee cannot read another employee's leave balance", async () => {

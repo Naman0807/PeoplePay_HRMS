@@ -1,11 +1,12 @@
 import { Router } from "express";
+import type { Request } from "express";
 import PDFDocument from "pdfkit";
 import { ah } from "../lib/async";
 import { prisma } from "../lib/prisma";
-import { notFound, ok } from "../lib/response";
+import { forbidden, notFound, ok } from "../lib/response";
 import { parseId } from "../lib/validate";
 import { requireAuth } from "../middleware/auth";
-import { assertSelfOrPrivileged } from "../lib/rbac";
+import { assertSelfOrPrivileged, PAYROLL_ROLES } from "../lib/rbac";
 
 export const payslipRoutes = Router();
 
@@ -22,6 +23,19 @@ const payslipInclude = {
 
 const money = (value: unknown) => Number(value ?? 0).toFixed(2);
 
+/**
+ * A payslip is readable by payroll staff, or by the employee it belongs to.
+ * HR_MANAGER is not payroll staff, so a payslip is not theirs to open.
+ */
+function assertPayslipAccess(req: Request, employee_id: number) {
+  const role = req.user?.role;
+  if (role && (role === "ADMIN" || PAYROLL_ROLES.includes(role))) return;
+  assertSelfOrPrivileged(req, employee_id);
+  if (role === "HR_MANAGER") {
+    throw forbidden("Payroll records are not available to this role.");
+  }
+}
+
 payslipRoutes.get(
   "/:id",
   ah(async (req, res) => {
@@ -31,7 +45,7 @@ payslipRoutes.get(
     });
     if (!payslip) throw notFound("Payslip");
     // Without this an employee can read any colleague's salary by guessing an id.
-    assertSelfOrPrivileged(req, payslip.employee_id);
+    assertPayslipAccess(req, payslip.employee_id);
     return ok(res, payslip);
   })
 );
@@ -44,7 +58,7 @@ payslipRoutes.get(
       include: payslipInclude,
     });
     if (!payslip) throw notFound("Payslip");
-    assertSelfOrPrivileged(req, payslip.employee_id);
+    assertPayslipAccess(req, payslip.employee_id);
 
     const period = `${payslip.date_from.toISOString().slice(0, 10)} to ${payslip.date_to
       .toISOString()

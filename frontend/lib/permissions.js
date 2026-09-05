@@ -18,15 +18,17 @@ export const ROLES = {
   ADMIN: "ADMIN",
 };
 
-const MANAGE_PEOPLE = [ROLES.HR_MANAGER, ROLES.ADMIN];
-const RUN_PAYROLL = [ROLES.HR_PAYROLL_USER, ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN];
-const APPROVE_PAYROLL = [ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN];
-const VIEW_PAYROLL = [
+// The ladder is cumulative: payroll roles inherit everything HR_MANAGER can do.
+const MANAGE_PEOPLE = [
   ROLES.HR_MANAGER,
   ROLES.HR_PAYROLL_USER,
   ROLES.HR_PAYROLL_MANAGER,
   ROLES.ADMIN,
 ];
+// HR_MANAGER is absent on purpose — the spec gives that role no payroll access.
+const PAYROLL = [ROLES.HR_PAYROLL_USER, ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN];
+// Salary Structures and Rules are read-only for a payroll user, editable for a manager.
+const PAYROLL_CONFIG = [ROLES.HR_PAYROLL_MANAGER, ROLES.ADMIN];
 
 const has = (user, roles) => Boolean(user) && roles.includes(user.role);
 
@@ -44,12 +46,13 @@ export function permissions(user = getUser()) {
     canApproveLeave: has(user, MANAGE_PEOPLE),
     canFileLeaveForOthers: has(user, MANAGE_PEOPLE),
 
-    // Payroll splits in two: creating and computing a run, versus confirming and
-    // paying it. A payroll user may prepare a run but not release the money.
-    canViewPayroll: has(user, VIEW_PAYROLL),
-    canRunPayroll: has(user, RUN_PAYROLL),
-    canApprovePayroll: has(user, APPROVE_PAYROLL),
+    // Both payroll roles run the whole payrun lifecycle; they differ on whether they
+    // may edit Salary Structures and Rules.
+    canViewPayroll: has(user, PAYROLL),
+    canRunPayroll: has(user, PAYROLL),
+    canApprovePayroll: has(user, PAYROLL),
+    canConfigurePayroll: has(user, PAYROLL_CONFIG),
 
-    canViewDashboard: has(user, VIEW_PAYROLL),
+    canViewDashboard: has(user, PAYROLL),
   };
 }

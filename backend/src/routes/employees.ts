@@ -5,12 +5,13 @@ import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseId, parseOneOf, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { assertSelfOrPrivileged, HR_ADMIN_ROLES, scopeEmployeeRows } from "../lib/rbac";
 
 export const employeeRoutes = Router();
 
 employeeRoutes.use(requireAuth);
 
-const WRITE_ROLES = ["HR_MANAGER"] as const;
+const WRITE_ROLES = HR_ADMIN_ROLES;
 const STATUSES = ["ACTIVE", "INACTIVE"] as const;
 
 /** Unique constraint on work_email surfaces as a 409, not a 500. */
@@ -28,10 +29,12 @@ employeeRoutes.get(
   ah(async (req, res) => {
     const { page, limit, skip, take } = paging(req);
 
-    const where: Prisma.EmployeeWhereInput = {
+    // An employee sees their own record only — the spec grants them "own employee
+    // details", not the staff directory.
+    const where: Prisma.EmployeeWhereInput = scopeEmployeeRows(req, {
       ...(req.query.department ? { department: String(req.query.department) } : {}),
       ...(req.query.status ? { status: parseOneOf(req.query.status, STATUSES, "status") } : {}),
-    };
+    });
 
     const [rows, total_records] = await Promise.all([
       prisma.employee.findMany({ where, skip, take, orderBy: { id: "asc" } }),
@@ -45,7 +48,9 @@ employeeRoutes.get(
 employeeRoutes.get(
   "/:id",
   ah(async (req, res) => {
-    const employee = await prisma.employee.findUnique({ where: { id: parseId(req.params.id) } });
+    const id = parseId(req.params.id);
+    assertSelfOrPrivileged(req, id);
+    const employee = await prisma.employee.findUnique({ where: { id } });
     if (!employee) throw notFound("Employee");
     return ok(res, employee);
   })

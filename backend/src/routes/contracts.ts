@@ -6,12 +6,12 @@ import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, parseOptionalDate, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { assertSelfOrPrivileged } from "../lib/rbac";
+import { assertSelfOrPrivileged, HR_ADMIN_ROLES } from "../lib/rbac";
 
 export const contractRoutes = Router();
 export const employeeContractRoutes = Router({ mergeParams: true });
 
-const WRITE_ROLES = ["HR_MANAGER"] as const;
+const WRITE_ROLES = HR_ADMIN_ROLES;
 const STATES = ["DRAFT", "RUNNING", "EXPIRED", "CANCELLED"] as const;
 
 function assertDateOrder(start_date: Date, end_date: Date | null) {
