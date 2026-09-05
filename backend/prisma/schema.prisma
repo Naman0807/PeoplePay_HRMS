@@ -98,8 +98,37 @@ model ResourceCalendar {
 
   employees Employee[]
   contracts Contract[]
+  days      ResourceCalendarDay[]
 
   @@map("resource_calendars")
+}
+
+enum Weekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+// A calendar's day-by-day breakdown, separate from the aggregate hours_per_week/
+// days_per_week above. Deliberately not kept in sync with those — payroll's
+// workingDays() only ever reads days_per_week as a count (see lib/payroll.ts), never
+// which specific weekdays, so this table has no payroll-side effect either way.
+model ResourceCalendarDay {
+  id                    Int     @id @default(autoincrement())
+  resource_calendar_id  Int
+  day                   Weekday
+  start_time            String  @db.VarChar(5) // "09:00", kept as plain text — no date/timezone math needed here
+  end_time              String  @db.VarChar(5)
+  break_minutes         Int     @default(0)
+
+  resource_calendar ResourceCalendar @relation(fields: [resource_calendar_id], references: [id], onDelete: Cascade)
+
+  @@unique([resource_calendar_id, day])
+  @@map("resource_calendar_days")
 }
 
 model Employee {

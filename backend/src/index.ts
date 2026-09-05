@@ -12,6 +12,7 @@ import { leaveRoutes } from "./routes/leaves";
 import { attendanceRoutes } from "./routes/attendances";
 import { dashboardRoutes } from "./routes/dashboard";
 import { adminRoutes } from "./routes/admin";
+import { resourceCalendarRoutes } from "./routes/resourceCalendars";
 
 export const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/leave-requests", leaveRoutes);
 app.use("/api/attendances", attendanceRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/resource-calendars", resourceCalendarRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
