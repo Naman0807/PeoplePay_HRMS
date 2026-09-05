@@ -93,20 +93,24 @@ export default function PayrunDetailPage() {
       )}
 
       <div className="mb-6 flex gap-2">
-        {perms.canRunPayroll && (
-        <PrimaryButton disabled={busy !== null} onClick={() => runAction("compute")}>
-          {busy === "compute" ? "Computing…" : "Compute"}
-        </PrimaryButton>
+        {/* One relevant action per state, not all three every time: Compute while
+            there's nothing computed yet (or to recompute), Confirm once computed,
+            Mark paid once confirmed — mirrors the DRAFT/COMPUTED/CONFIRMED/PAID
+            lifecycle instead of showing every button regardless of state. */}
+        {perms.canRunPayroll && ["DRAFT", "COMPUTED"].includes(payrun.state) && (
+          <PrimaryButton disabled={busy !== null} onClick={() => runAction("compute")}>
+            {busy === "compute" ? "Computing…" : "Compute"}
+          </PrimaryButton>
         )}
-        {perms.canApprovePayroll && (
-        <>
-        <SecondaryButton disabled={busy !== null} onClick={() => setConfirm("confirm")}>
-          {busy === "confirm" ? "Confirming…" : "Confirm"}
-        </SecondaryButton>
-        <SecondaryButton disabled={busy !== null} onClick={() => setConfirm("mark-paid")}>
-          {busy === "mark-paid" ? "Marking paid…" : "Mark paid"}
-        </SecondaryButton>
-        </>
+        {perms.canApprovePayroll && payrun.state === "COMPUTED" && (
+          <SecondaryButton disabled={busy !== null} onClick={() => setConfirm("confirm")}>
+            {busy === "confirm" ? "Confirming…" : "Confirm"}
+          </SecondaryButton>
+        )}
+        {perms.canApprovePayroll && payrun.state === "CONFIRMED" && (
+          <SecondaryButton disabled={busy !== null} onClick={() => setConfirm("mark-paid")}>
+            {busy === "mark-paid" ? "Marking paid…" : "Mark paid"}
+          </SecondaryButton>
         )}
       </div>
 
