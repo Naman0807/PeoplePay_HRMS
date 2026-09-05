@@ -25,7 +25,12 @@ const CAN_APPROVE_ROLES = ["HR_MANAGER", "HR_PAYROLL_MANAGER", "ADMIN"];
 
 export default function TimeOffPage() {
   const { data: employees, loading: empLoading, error: empError } = useFetch("/api/employees");
-  const [employeeId, setEmployeeId] = useState("");
+  // An employee files only for themselves, so preselect them. Leaving this empty
+  // meant the form posted whichever person the dropdown happened to land on, and the
+  // API correctly refused it with 403.
+  const [employeeId, setEmployeeId] = useState(() =>
+    perms.isEmployee && perms.user?.employee_id ? String(perms.user.employee_id) : ""
+  );
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +101,8 @@ export default function TimeOffPage() {
       <div className="mb-4 max-w-xs">
         {empLoading && <Loading />}
         {empError && <ErrorBox message={empError} />}
-        {employees && (
+        {/* Only staff who may file on someone else's behalf get to choose a person. */}
+        {employees && !perms.isEmployee && (
           <Select
             label="Filter by employee (optional)"
             value={employeeId}

@@ -127,7 +127,8 @@ export default function AttendancePage() {
       <div className="mb-4 max-w-xs">
         {empLoading && <Loading />}
         {empError && <ErrorBox message={empError} />}
-        {employees && (
+        {/* An employee only sees their own rows, so the picker is for staff only. */}
+        {employees && !perms.isEmployee && (
           <Select
             label="Employee"
             value={employeeId}
