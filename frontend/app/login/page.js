@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { login } from "@/lib/auth";
 import { Field, PrimaryButton, Card } from "@/components/ui";
 
@@ -65,6 +66,13 @@ export default function LoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </PrimaryButton>
         </form>
+
+        <p className="text-center text-sm text-text-muted">
+          New here?{" "}
+          <Link href="/signup" className="text-primary hover:underline">
+            Sign up
+          </Link>
+        </p>
       </Card>
     </main>
   );
