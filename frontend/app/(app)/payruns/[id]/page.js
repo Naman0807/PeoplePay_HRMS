@@ -23,8 +23,6 @@ import {
 
 const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-// No GET /api/payruns/:id in the contract — only the list endpoint — so the
-// current payrun's state is read out of the /api/payruns list by id.
 export default function PayrunDetailPage() {
   const perms = permissions();
   // The wizard passes its selection through the query string; absent means everyone.
@@ -34,12 +32,19 @@ export default function PayrunDetailPage() {
     ? selected.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0)
     : null;
   const { id } = useParams();
-  const { data: payruns, loading, error, refetch } = useFetch("/api/payruns");
-  const payrun = payruns?.find((p) => String(p.id) === String(id));
+  // GET /api/payruns/:id includes its payslips, so this is also how already
+  // computed/confirmed/paid runs show individual amounts again after a refresh —
+  // not only right after clicking Compute in this session.
+  const { data: payrun, loading, error, refetch } = useFetch(`/api/payruns/${id}`);
+  const payslips = payrun?.payslips ?? null;
+  // The payslips embedded in /api/payruns/:id carry employee_id but not the name —
+  // look it up from the employee list rather than adding a per-row fetch.
+  const { data: employees } = useFetch("/api/employees");
+  const employeeName = (employee_id) =>
+    employees?.find((e) => e.id === employee_id)?.name ?? `#${employee_id}`;
 
   const [busy, setBusy] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [payslips, setPayslips] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -48,13 +53,10 @@ export default function PayrunDetailPage() {
     setBusy(action);
     setActionError(null);
     try {
-      const res = await api.post(
+      await api.post(
         `/api/payruns/${id}/${action}`,
         action === "compute" && employeeIds ? { employee_ids: employeeIds } : undefined
       );
-      // compute returns { payrun_id, state, payslip_count, warnings, payslips: [...] },
-      // so the array is nested — res.data.data is the wrapper, not the list.
-      if (action === "compute") setPayslips(res.data.data.payslips);
       refetch();
       if (action === "compute") setToast("Payrun computed");
       else if (action === "confirm") setToast("Payrun confirmed");
@@ -108,9 +110,10 @@ export default function PayrunDetailPage() {
       </div>
 
       {payslips?.length > 0 && (
-        <Table headers={["Payslip", "Gross", "Net", "Warning"]}>
+        <Table headers={["Employee", "Payslip", "Gross", "Net", "Warning"]}>
           {payslips.map((p) => (
             <tr key={p.id} className="border-t border-gray-100">
+              <td className="px-4 py-2 text-gray-900">{employeeName(p.employee_id)}</td>
               <td className="px-4 py-2">
                 <Link href={`/payslips/${p.id}`} className="font-medium text-gray-900 hover:underline">
                   #{p.id}
