@@ -34,6 +34,11 @@ export default function TimeOffPage() {
   // Employees only ever see their own requests, so preselect them. HR/approver
   // roles default to "All employees" — they need the full queue, not just their own.
   const [employeeId, setEmployeeId] = useState(() => (perms.isEmployee ? ownEmployeeId || "" : ""));
+  // The filter is for browsing/approving anyone's queue. Filing is only ever for
+  // yourself, so the moment the filter points at someone else, hide "Request leave"
+  // entirely rather than let it sit next to another person's name and file for you
+  // anyway — that reads as "filing as them" even though it never was.
+  const canFileNow = Boolean(ownEmployeeId) && (employeeId === "" || employeeId === ownEmployeeId);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -118,7 +123,7 @@ export default function TimeOffPage() {
       <PageHeader
         title="Time Off"
         actions={
-          ownEmployeeId && (
+          canFileNow && (
             <PrimaryButton onClick={() => setShowForm((v) => !v)}>
               {showForm ? "Cancel" : "Request leave"}
             </PrimaryButton>
@@ -136,14 +141,19 @@ export default function TimeOffPage() {
           <Select
             label="Filter by employee"
             value={employeeId}
-            onChange={setEmployeeId}
+            onChange={(v) => {
+              setEmployeeId(v);
+              // Leaving the "self" filter closes any open request form — it would
+              // otherwise sit open next to a different person's name.
+              if (v !== "" && v !== ownEmployeeId) setShowForm(false);
+            }}
             options={[{ value: "", label: "All employees" }, ...employees.map((e) => ({ value: String(e.id), label: e.name }))]}
             hint=""
           />
         )}
       </div>
 
-      {showForm && ownEmployeeId && (
+      {showForm && canFileNow && (
         <Card className="mb-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && <ErrorBox message={formError} />}
