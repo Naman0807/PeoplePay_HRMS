@@ -36,6 +36,7 @@ export function permissions(user = getUser()) {
   return {
     user,
     isEmployee: Boolean(user) && user.role === ROLES.EMPLOYEE,
+    isAdmin: Boolean(user) && user.role === ROLES.ADMIN,
 
     // Employees, contracts, attendance — all HR_MANAGER territory.
     canManageEmployees: has(user, MANAGE_PEOPLE),

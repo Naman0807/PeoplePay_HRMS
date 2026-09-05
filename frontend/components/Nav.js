@@ -12,7 +12,9 @@ const LINKS = [
   { href: "/time-off", label: "Time Off" },
   // Payroll and Dashboard return 403 for an EMPLOYEE, so they are not offered.
   { href: "/payruns", label: "Payroll", requires: "canViewPayroll" },
+  { href: "/salary-structures", label: "Salary rules", requires: "canViewPayroll" },
   { href: "/dashboard", label: "Dashboard", requires: "canViewDashboard" },
+  { href: "/users", label: "Users", requires: "isAdmin" },
 ];
 
 export default function Nav() {
