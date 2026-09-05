@@ -30,9 +30,9 @@ const EMPTY_FORM = {
   resource_calendar_id: "",
 };
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD",
+  currency: "INR",
 });
 
 export default function EmployeeContractsPage() {

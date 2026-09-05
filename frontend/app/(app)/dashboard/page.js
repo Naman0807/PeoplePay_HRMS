@@ -6,9 +6,9 @@ import { Loading, ErrorBox, Empty } from "@/components/StatusStates";
 import { Card, PageHeader, Field, EmptyState } from "@/components/ui";
 import { permissions } from "@/lib/permissions";
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD",
+  currency: "INR",
   maximumFractionDigits: 0,
 });
 
