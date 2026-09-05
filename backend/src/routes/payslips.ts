@@ -68,11 +68,10 @@ payslipRoutes.get(
     doc.moveDown(0.8);
 
     // The same rule-by-rule breakdown the screen shows — in sequence order, from
-    // payslip_lines. Nothing here is recomputed for the PDF.
-    const [colSeq, colCode, colName, colAmount] = [50, 100, 180, 430];
-    doc.fontSize(10).text("Seq", colSeq, doc.y);
+    // payslip_lines (the ordering is still by sequence, just not printed as a column).
+    const [colCode, colName, colAmount] = [50, 130, 430];
+    doc.fontSize(10).text("Code", colCode, doc.y);
     const headerY = doc.y - doc.currentLineHeight();
-    doc.text("Code", colCode, headerY);
     doc.text("Rule", colName, headerY);
     doc.text("Amount", colAmount, headerY, { width: 110, align: "right" });
     doc.moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).stroke();
@@ -80,7 +79,6 @@ payslipRoutes.get(
 
     for (const line of payslip.line_ids) {
       const y = doc.y;
-      doc.text(String(line.sequence), colSeq, y);
       doc.text(line.rule_code, colCode, y);
       doc.text(line.rule_name, colName, y);
       doc.text(money(line.amount), colAmount, y, { width: 110, align: "right" });
