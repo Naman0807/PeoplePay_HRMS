@@ -146,6 +146,24 @@ export type ComputeResult = {
 export const WAGE_CODE = "WAGE";
 
 /**
+ * Day counts seeded into the context alongside WAGE, so a rule can prorate pay.
+ *
+ * PERIOD_DAYS  working days in the payrun period
+ * CONTRACT_DAYS working days the contract actually covers inside it
+ * UNPAID_DAYS  approved leave on unpaid types, inside the period
+ * WORKED_DAYS  CONTRACT_DAYS minus UNPAID_DAYS — what the employee is paid for
+ *
+ * A full month with no unpaid leave gives WORKED_DAYS === PERIOD_DAYS, so the
+ * proration factor is exactly 1 and pay is unchanged.
+ */
+export type DayCounts = {
+  PERIOD_DAYS: number;
+  CONTRACT_DAYS: number;
+  UNPAID_DAYS: number;
+  WORKED_DAYS: number;
+};
+
+/**
  * Runs the structure's rules in `sequence` order. Each result is added to the context
  * under its own code, so a later rule reads an earlier one by code and never by a
  * hardcoded number — which is exactly the claim the jury defense in §7 makes.
@@ -153,9 +171,18 @@ export const WAGE_CODE = "WAGE";
  * Amounts are rounded to 2 decimal places as each rule lands, so what a later rule
  * reads is identical to what gets stored in payslip_lines.
  */
-export function computeLines(rules: SalaryRule[], wage: Decimal | number | string): ComputeResult {
+export function computeLines(
+  rules: SalaryRule[],
+  wage: Decimal | number | string,
+  days?: DayCounts
+): ComputeResult {
   const ordered = [...rules].sort((a, b) => a.sequence - b.sequence);
   const context: RuleContext = { [WAGE_CODE]: new D(wage) };
+
+  // Absent day counts mean "a whole ordinary period", so rules that prorate still
+  // evaluate and simply multiply by one.
+  const counts = days ?? { PERIOD_DAYS: 1, CONTRACT_DAYS: 1, UNPAID_DAYS: 0, WORKED_DAYS: 1 };
+  for (const [code, value] of Object.entries(counts)) context[code] = new D(value);
   const lines: ComputedLine[] = [];
 
   for (const rule of ordered) {

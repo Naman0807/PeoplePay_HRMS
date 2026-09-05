@@ -21,7 +21,11 @@ const EMPLOYEES = [
 // PERCENT base code WAGE is supplied by the engine from contract.wage; every other
 // code resolves to a payslip_lines row written earlier in the same sequence.
 const RULES = [
-  { code: "BASIC", name: "Basic Salary",           category: "BASIC" as const,     sequence: 10, amount_select: "PERCENT" as const, amount_percent: 50, percent_base_code: "WAGE" },
+  // BASIC prorates by the days actually worked, so a mid-period joiner and unpaid
+  // leave both reduce pay. A full period with no unpaid leave gives WORKED_DAYS
+  // equal to PERIOD_DAYS, a factor of exactly 1, and the same number as before.
+  // Everything downstream is a percentage of BASIC, so the whole payslip follows.
+  { code: "BASIC", name: "Basic Salary",           category: "BASIC" as const,     sequence: 10, amount_select: "FORMULA" as const, formula: "WAGE * 50 / 100 * WORKED_DAYS / PERIOD_DAYS", amount_percent: null, percent_base_code: null },
   { code: "HRA",   name: "House Rent Allowance",   category: "ALLOWANCE" as const, sequence: 20, amount_select: "PERCENT" as const, amount_percent: 40, percent_base_code: "BASIC" },
   { code: "GROSS", name: "Gross Salary",           category: "GROSS" as const,     sequence: 30, amount_select: "FORMULA" as const, formula: "BASIC + HRA" },
   { code: "PT",    name: "Professional Tax",       category: "DEDUCTION" as const, sequence: 40, amount_select: "FIXED" as const,   amount_fixed: 200 },

@@ -4,6 +4,7 @@ import { ah } from "../lib/async";
 import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { computeLines, DEFAULT_DAYS_PER_WEEK, workingDays } from "../lib/payroll";
+import type { DayCounts } from "../lib/payroll";
 import { parseDate, parseId, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { PAYROLL_ROLES } from "../lib/rbac";
@@ -200,6 +201,21 @@ payrunRoutes.post(
       ? contracts.filter((c) => selected.has(c.employee_id))
       : contracts;
 
+    // Approved leave on unpaid types (Loss of Pay, Other) reduces what is paid.
+    // Paid types are already covered by the wage, so they are deliberately excluded.
+    const unpaidLeave = await prisma.leaveRequest.findMany({
+      where: {
+        state: "APPROVED",
+        leave_type: { requires_allocation: false },
+        date_from: { lte: payrun.date_end },
+        date_to: { gte: payrun.date_start },
+      },
+      select: { employee_id: true, date_from: true, date_to: true },
+    });
+
+    const laterOf = (a: Date, b: Date) => (a > b ? a : b);
+    const earlierOf = (a: Date, b: Date) => (a < b ? a : b);
+
     const seen = new Set<number>();
 
     const payslips = await prisma.$transaction(async (tx) => {
@@ -213,13 +229,40 @@ payrunRoutes.post(
 
         // Contract calendar wins, else the employee's, else the schema default.
         const calendar = contract.resource_calendar ?? contract.employee.resource_calendar;
-        const worked_days = workingDays(
-          payrun.date_start,
-          payrun.date_end,
-          calendar?.days_per_week ?? DEFAULT_DAYS_PER_WEEK
+        const days_per_week = calendar?.days_per_week ?? DEFAULT_DAYS_PER_WEEK;
+        const period_days = workingDays(payrun.date_start, payrun.date_end, days_per_week);
+
+        // A contract starting or ending mid-period only covers part of it, so someone
+        // who joins on the 25th is not paid for the whole month.
+        const contract_days = workingDays(
+          laterOf(contract.start_date, payrun.date_start),
+          contract.end_date
+            ? earlierOf(contract.end_date, payrun.date_end)
+            : payrun.date_end,
+          days_per_week
         );
 
-        const { lines, gross_amount, net_amount } = computeLines(rules, contract.wage);
+        const unpaid_days = unpaidLeave
+          .filter((l) => l.employee_id === contract.employee_id)
+          .reduce(
+            (sum, l) =>
+              sum +
+              workingDays(
+                laterOf(l.date_from, payrun.date_start),
+                earlierOf(l.date_to, payrun.date_end),
+                days_per_week
+              ),
+            0
+          );
+
+        const counts: DayCounts = {
+          PERIOD_DAYS: period_days,
+          CONTRACT_DAYS: contract_days,
+          UNPAID_DAYS: unpaid_days,
+          WORKED_DAYS: Math.max(0, contract_days - unpaid_days),
+        };
+
+        const { lines, gross_amount, net_amount } = computeLines(rules, contract.wage, counts);
 
         let warning_code: string | null = null;
         if (duplicate) warning_code = "DUPLICATE_PAYSLIP";
@@ -233,7 +276,7 @@ payrunRoutes.post(
             structure_id: payrun.structure_id,
             date_from: payrun.date_start,
             date_to: payrun.date_end,
-            worked_days,
+            worked_days: counts.WORKED_DAYS,
             gross_amount,
             net_amount,
             warning_code,
