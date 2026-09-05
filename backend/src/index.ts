@@ -6,6 +6,8 @@ import { ok } from "./lib/response";
 import { authRoutes } from "./routes/auth";
 import { employeeRoutes } from "./routes/employees";
 import { contractRoutes, employeeContractRoutes } from "./routes/contracts";
+import { payrunRoutes } from "./routes/payruns";
+import { payslipRoutes } from "./routes/payslips";
 
 export const app = express();
 
@@ -18,8 +20,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/employees/:id/contracts", employeeContractRoutes);
 app.use("/api/contracts", contractRoutes);
+app.use("/api/payruns", payrunRoutes);
+app.use("/api/payslips", payslipRoutes);
 
-// Still to mount: attendances, leave-requests, payruns, payslips, dashboard.
+// Still to mount: attendances, leave-requests, dashboard.
 
 app.use(notFoundHandler);
 app.use(errorHandler);
