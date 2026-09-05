@@ -145,7 +145,15 @@ export default function EmployeeDetailPage() {
             <ReadOnlyField label="Manager" value={manager?.name || "—"} />
             <ReadOnlyField
               label="Schedule"
-              value={employee.resource_calendar_id ? `Calendar #${employee.resource_calendar_id}` : "—"}
+              value={
+                employee.resource_calendar_id ? (
+                  <Link href={`/schedules/${employee.resource_calendar_id}`} className="hover:underline">
+                    Calendar #{employee.resource_calendar_id}
+                  </Link>
+                ) : (
+                  "—"
+                )
+              }
             />
             <ReadOnlyField label="Job Position" value={employee.job_title || "—"} />
             <ReadOnlyField

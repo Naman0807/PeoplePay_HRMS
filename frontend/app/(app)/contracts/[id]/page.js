@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useFetch } from "@/lib/useFetch";
 import { BackLink, PageHeader, Card, Badge, statusVariant, Loading, ErrorBox } from "@/components/ui";
 
@@ -52,7 +53,15 @@ export default function ContractDetailPage() {
           <ReadOnlyField label="Wage / Month" value={currency.format(contract.wage)} />
           <ReadOnlyField
             label="Working Schedule"
-            value={contract.resource_calendar_id ? `Calendar #${contract.resource_calendar_id}` : "—"}
+            value={
+              contract.resource_calendar_id ? (
+                <Link href={`/schedules/${contract.resource_calendar_id}`} className="hover:underline">
+                  Calendar #{contract.resource_calendar_id}
+                </Link>
+              ) : (
+                "—"
+              )
+            }
           />
         </div>
       </div>
