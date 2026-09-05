@@ -4,19 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getUser, logout } from "@/lib/auth";
+import { permissions } from "@/lib/permissions";
 
 const LINKS = [
   { href: "/employees", label: "Employees" },
   { href: "/attendance", label: "Attendance" },
   { href: "/time-off", label: "Time Off" },
-  { href: "/payruns", label: "Payroll" },
-  { href: "/dashboard", label: "Dashboard" },
+  // Payroll and Dashboard return 403 for an EMPLOYEE, so they are not offered.
+  { href: "/payruns", label: "Payroll", requires: "canViewPayroll" },
+  { href: "/dashboard", label: "Dashboard", requires: "canViewDashboard" },
 ];
 
 export default function Nav() {
   const router = useRouter();
   const pathname = usePathname();
   const user = getUser();
+  const perms = permissions(user);
+  const links = LINKS.filter((l) => !l.requires || perms[l.requires]);
   const [menuOpen, setMenuOpen] = useState(false);
 
   function isActive(href) {
@@ -41,7 +45,7 @@ export default function Nav() {
       <div className="flex items-center gap-5">
         <span className="text-sm font-semibold text-gray-900">PeoplePay360</span>
         <div className="hidden items-center gap-5 md:flex">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
@@ -114,7 +118,7 @@ export default function Nav() {
           className="absolute left-0 right-0 top-full border-b border-gray-200 bg-white px-6 py-3 shadow-md md:hidden"
         >
           <div className="flex flex-col gap-1">
-            {LINKS.map((l) => (
+            {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

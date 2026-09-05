@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import {
   PageHeader,
   PrimaryButton,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui";
 
 export default function PayrunsPage() {
+  const perms = permissions();
   const { data, loading, error, refetch } = useFetch("/api/payruns");
 
   return (
@@ -22,7 +24,7 @@ export default function PayrunsPage() {
         title="Payroll"
         actions={
           <Link href="/payruns/new">
-            <PrimaryButton>New payrun</PrimaryButton>
+            {perms.canRunPayroll && <PrimaryButton>New payrun</PrimaryButton>}
           </Link>
         }
       />

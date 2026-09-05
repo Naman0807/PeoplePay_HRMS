@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import {
   BackLink,
   PageHeader,
@@ -35,6 +36,7 @@ const currency = new Intl.NumberFormat("en-US", {
 });
 
 export default function EmployeeContractsPage() {
+  const perms = permissions();
   const { id } = useParams();
   const { data, loading, error, refetch } = useFetch(`/api/employees/${id}/contracts`);
   const [showForm, setShowForm] = useState(false);
@@ -86,9 +88,11 @@ export default function EmployeeContractsPage() {
       <PageHeader
         title="Contracts"
         actions={
+          perms.canManageContracts && (
           <PrimaryButton onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Cancel" : "New contract"}
           </PrimaryButton>
+          )
         }
       />
 

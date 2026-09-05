@@ -88,7 +88,7 @@ export default function NewPayrunPage() {
           {!eligLoading && !eligError && eligible?.length > 0 && (
             <ul className="rounded-lg border border-gray-200 p-2 text-sm">
               {eligible.map((e) => (
-                <li key={e.id} className="border-b border-gray-100 py-1.5 last:border-0">
+                <li key={e.employee_id} className="border-b border-gray-100 py-1.5 last:border-0">
                   {e.name}
                 </li>
               ))}

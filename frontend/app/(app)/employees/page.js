@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import { Loading, ErrorBox } from "@/components/StatusStates";
 import {
   Badge,
@@ -20,6 +21,7 @@ import {
 const EMPTY_FORM = { name: "", work_email: "", department: "", job_title: "" };
 
 export default function EmployeesPage() {
+  const perms = permissions();
   const { data, loading, error, refetch } = useFetch("/api/employees");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -49,9 +51,11 @@ export default function EmployeesPage() {
       <PageHeader
         title="Employees"
         actions={
+          perms.canManageEmployees && (
           <PrimaryButton onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Cancel" : "Add employee"}
           </PrimaryButton>
+          )
         }
       />
 

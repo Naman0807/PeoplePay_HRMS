@@ -3,6 +3,7 @@
 import { useState } from "react";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import {
   PageHeader,
   Field,
@@ -21,6 +22,7 @@ import {
 const EMPTY_FORM = { check_in: "", check_out: "", status: "PRESENT", notes: "" };
 
 export default function AttendancePage() {
+  const perms = permissions();
   const { data: employees, loading: empLoading, error: empError } = useFetch("/api/employees");
   const [employeeId, setEmployeeId] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -60,9 +62,11 @@ export default function AttendancePage() {
       <PageHeader
         title="Attendance"
         actions={
+          perms.canManageAttendance && (
           <PrimaryButton onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Cancel" : "Add entry"}
           </PrimaryButton>
+          )
         }
       />
 

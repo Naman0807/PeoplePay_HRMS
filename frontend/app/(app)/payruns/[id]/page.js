@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import {
   BackLink,
   PageHeader,
@@ -25,6 +26,7 @@ const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: 
 // No GET /api/payruns/:id in the contract — only the list endpoint — so the
 // current payrun's state is read out of the /api/payruns list by id.
 export default function PayrunDetailPage() {
+  const perms = permissions();
   const { id } = useParams();
   const { data: payruns, loading, error, refetch } = useFetch("/api/payruns");
   const payrun = payruns?.find((p) => String(p.id) === String(id));
@@ -41,7 +43,9 @@ export default function PayrunDetailPage() {
     setActionError(null);
     try {
       const res = await api.post(`/api/payruns/${id}/${action}`);
-      if (action === "compute") setPayslips(res.data.data);
+      // compute returns { payrun_id, state, payslip_count, warnings, payslips: [...] },
+      // so the array is nested — res.data.data is the wrapper, not the list.
+      if (action === "compute") setPayslips(res.data.data.payslips);
       refetch();
       if (action === "compute") setToast("Payrun computed");
       else if (action === "confirm") setToast("Payrun confirmed");
@@ -77,15 +81,21 @@ export default function PayrunDetailPage() {
       )}
 
       <div className="mb-6 flex gap-2">
+        {perms.canRunPayroll && (
         <PrimaryButton disabled={busy !== null} onClick={() => runAction("compute")}>
           {busy === "compute" ? "Computing…" : "Compute"}
         </PrimaryButton>
+        )}
+        {perms.canApprovePayroll && (
+        <>
         <SecondaryButton disabled={busy !== null} onClick={() => setConfirm("confirm")}>
           {busy === "confirm" ? "Confirming…" : "Confirm"}
         </SecondaryButton>
         <SecondaryButton disabled={busy !== null} onClick={() => setConfirm("mark-paid")}>
           {busy === "mark-paid" ? "Marking paid…" : "Mark paid"}
         </SecondaryButton>
+        </>
+        )}
       </div>
 
       {payslips?.length > 0 && (
