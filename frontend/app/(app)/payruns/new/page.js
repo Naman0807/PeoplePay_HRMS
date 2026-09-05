@@ -16,11 +16,30 @@ import {
   ErrorBox,
 } from "@/components/ui";
 
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** First and last day of a YYYY-MM month, as YYYY-MM-DD strings. */
+function monthBounds(month) {
+  const [year, mon] = month.split("-").map(Number);
+  const start = `${month}-01`;
+  const lastDay = new Date(year, mon, 0).getDate();
+  const end = `${month}-${String(lastDay).padStart(2, "0")}`;
+  return { date_start: start, date_end: end };
+}
+
 export default function NewPayrunPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [payrunId, setPayrunId] = useState(null);
-  const [form, setForm] = useState({ name: "", structure_id: "1", date_start: "", date_end: "" });
+  // A calendar-month picker, not free-form dates: the Dashboard's period filter only
+  // counts a payslip whose whole date range fits inside one calendar month, so any
+  // payrun spanning two months (e.g. Aug 13 - Sep 12) can never show up there under
+  // any period. Locking the wizard to whole months prevents that at the source.
+  const [month, setMonth] = useState(() => currentMonth());
+  const [form, setForm] = useState({ name: "", structure_id: "1" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
@@ -42,11 +61,12 @@ export default function NewPayrunPage() {
     setSubmitting(true);
     setError(null);
     try {
+      const { date_start, date_end } = monthBounds(month);
       const res = await api.post("/api/payruns", {
         name: form.name,
         structure_id: Number(form.structure_id),
-        date_start: form.date_start,
-        date_end: form.date_end,
+        date_start,
+        date_end,
       });
       setPayrunId(res.data.data.id);
       setStep(2);
@@ -79,8 +99,14 @@ export default function NewPayrunPage() {
                 required
                 hint="Seeded payroll structure ID (default 1 from the seed script)."
               />
-              <Field label="Period start" type="date" value={form.date_start} onChange={(v) => setForm({ ...form, date_start: v })} required />
-              <Field label="Period end" type="date" value={form.date_end} onChange={(v) => setForm({ ...form, date_end: v })} required />
+              <Field
+                label="Period"
+                type="month"
+                value={month}
+                onChange={setMonth}
+                required
+                hint="A full calendar month — the Dashboard's period filter can't show a run that spans two months."
+              />
             </div>
             <PrimaryButton type="submit" disabled={submitting}>
               {submitting ? "Creating…" : "Create & review eligible employees"}
