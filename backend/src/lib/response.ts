@@ -1,9 +1,20 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 
 // The success / error envelopes from AGENT.md §4. Every route replies through these.
 
 export type Meta = { page: number; limit: number; total_records: number };
 export type ErrorDetail = { field: string; issue: string };
+
+/**
+ * page=/limit= on every list endpoint, defaults 1/20 (AGENT.md §4).
+ * Unparseable values fall back to the defaults instead of 400 — a bad page number
+ * shouldn't break a list view.
+ */
+export function paging(req: Request) {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+  return { page, limit, skip: (page - 1) * limit, take: limit };
+}
 
 export function ok(res: Response, data: unknown, code = 200, meta?: Meta) {
   return res.status(code).json({ success: true, code, data, ...(meta ? { meta } : {}) });
