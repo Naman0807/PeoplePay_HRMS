@@ -226,6 +226,8 @@ CREATE INDEX idx_lines_payslip ON payslip_lines(payslip_id);
 
 Stick to this exactly. Frontend never guesses a field name; Backend never renames one without updating this file.
 
+Request/response `data` objects mirror the Prisma models field-for-field, using the column names in §3 (`snake_case` as written there, unless Prisma's generated client forces camelCase — Backend confirms the actual casing when the first migration lands). No field names are invented ahead of that — this doc names endpoints and shapes, not exact payloads, until the schema is the single source.
+
 **Success envelope:**
 ```json
 {
@@ -255,7 +257,7 @@ Stick to this exactly. Frontend never guesses a field name; Backend never rename
 | 400 | Validation failed (missing field, bad date range) |
 | 401 / 403 | Not logged in / role doesn't allow this action |
 | 404 | Employee, contract, payrun, etc. not found |
-| 409 | Contract overlap, duplicate payslip — the two rules jury will test |
+| 409 | Contract overlap — the rule jury will test live |
 
 **Auth**
 - `POST /api/auth/login`
@@ -272,7 +274,7 @@ Stick to this exactly. Frontend never guesses a field name; Backend never rename
 - `POST /api/contracts`
 - `PATCH /api/contracts/:id`
 
-POST/PATCH run the overlap check (rule 6) before insert — returns `409 CONTRACT_OVERLAP` on conflict.
+`POST /api/contracts` accepts `state` (`DRAFT` or `RUNNING`); `PATCH /api/contracts/:id` can change it. The overlap check (rule 6) runs on both, whenever the resulting state is `RUNNING` — returns `409 CONTRACT_OVERLAP` on conflict. A `DRAFT` contract never triggers or blocks on overlap.
 
 **Attendance**
 - `GET /api/attendances?employee_id=`
@@ -297,9 +299,17 @@ Approve endpoint deducts the allocation server-side (rule 4) — Frontend never 
 
 `compute` response includes `line_ids` per payslip — the full rule-by-rule breakdown, in sequence, is what the Payslip screen renders directly.
 
+`compute` is bulk: a duplicate payslip for one employee never fails the whole payrun. It's flagged via `payslips.warning_code = DUPLICATE_PAYSLIP` on that payslip only, not a `409`. `409` is reserved for contract overlap.
+
+`payslips.worked_days` is derived from the contract's `resource_calendar` working days within the payslip period. Attendance records do **not** feed payroll in v1 — worked_days comes from the calendar, not from `attendances` rows. State this explicitly if a judge asks whether attendance affects pay.
+
 **Dashboard**
 - `GET /api/dashboard/kpis?period=&department=`
 - `GET /api/dashboard/salary-by-department?period=`
+
+`period=` is `YYYY-MM` (e.g. `2026-04`) on both endpoints.
+
+`kpis` returns exactly four numbers: `headcount`, `total_gross` (period), `total_net` (period), `pending_leave_requests`.
 
 One endpoint per KPI/chart (rule 10) — never one giant `/dashboard` blob. Easier for Frontend to loading-state each widget independently.
 
