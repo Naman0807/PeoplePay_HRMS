@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import {
   BackLink,
   PageHeader,
@@ -12,12 +13,15 @@ import {
   Select,
   Card,
   PrimaryButton,
+  Badge,
+  statusVariant,
   Toast,
   Loading,
   ErrorBox,
 } from "@/components/ui";
 
 export default function EmployeeDetailPage() {
+  const perms = permissions();
   const { id } = useParams();
   const { data: employee, loading, error, refetch } = useFetch(`/api/employees/${id}`);
   const [form, setForm] = useState(null);
@@ -53,6 +57,39 @@ export default function EmployeeDetailPage() {
   if (loading) return <Loading />;
   if (error) return <ErrorBox message={error} onRetry={refetch} />;
   if (!form) return null;
+
+  // Editing (including flipping status) is HR_MANAGER-only on the backend, for every
+  // employee record — including the signed-in user's own. Everyone else gets a
+  // read-only view instead of a form that would 403 on save.
+  if (!perms.canManageEmployees) {
+    return (
+      <div className="max-w-lg">
+        <div className="mb-4">
+          <BackLink href="/employees">Back to employees</BackLink>
+        </div>
+        <PageHeader
+          title={employee.name}
+          actions={
+            <Link href={`/employees/${id}/contracts`} className="text-sm font-medium text-gray-700 hover:underline">
+              Contracts →
+            </Link>
+          }
+        />
+        <Card className="space-y-3 text-sm">
+          <ReadOnlyField label="Name" value={employee.name} />
+          <ReadOnlyField label="Work email" value={employee.work_email} />
+          <ReadOnlyField label="Department" value={employee.department || "—"} />
+          <ReadOnlyField label="Job title" value={employee.job_title || "—"} />
+          <div>
+            <div className="text-xs font-medium text-gray-600">Status</div>
+            <div className="mt-1">
+              <Badge variant={statusVariant(employee.status)}>{employee.status}</Badge>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg">
@@ -92,6 +129,15 @@ export default function EmployeeDetailPage() {
       </Card>
 
       <Toast message={toast} onClose={() => setToast(null)} />
+    </div>
+  );
+}
+
+function ReadOnlyField({ label, value }) {
+  return (
+    <div>
+      <div className="text-xs font-medium text-gray-600">{label}</div>
+      <div className="mt-0.5 text-gray-900">{value}</div>
     </div>
   );
 }
