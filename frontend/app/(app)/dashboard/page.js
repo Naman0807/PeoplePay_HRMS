@@ -81,6 +81,34 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {kpis && (Number(kpis.total_gross) > 0 || Number(kpis.total_net) > 0) && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold text-gray-700">Gross vs net</h2>
+          <Card
+            role="img"
+            aria-label="Bar chart comparing total gross and total net payroll for the selected period"
+            className="space-y-3"
+          >
+            {[
+              { label: "Total gross", value: Number(kpis.total_gross), color: "bg-emerald-500" },
+              { label: "Total net", value: Number(kpis.total_net), color: "bg-sky-500" },
+            ].map((row) => {
+              const max = Math.max(Number(kpis.total_gross), Number(kpis.total_net)) || 1;
+              const pct = Math.round((row.value / max) * 100);
+              return (
+                <div key={row.label} className="flex items-center gap-3 text-sm">
+                  <div className="w-28 shrink-0 text-gray-600">{row.label}</div>
+                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-gray-100">
+                    <div className={`h-full rounded-full ${row.color} transition-all`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="w-24 shrink-0 text-right text-gray-600">{formatMoney(row.value)}</div>
+                </div>
+              );
+            })}
+          </Card>
+        </div>
+      )}
+
       <h2 className="mb-3 text-sm font-semibold text-gray-700">Salary by department</h2>
       {chartLoading && <Loading />}
       {chartError && <ErrorBox message={chartError} onRetry={refetchChart} />}
