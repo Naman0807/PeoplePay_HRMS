@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma";
 import { badRequest, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, parseOptionalDate, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { assertSelfOrPrivileged, scopeToSelf } from "../lib/rbac";
 
 export const attendanceRoutes = Router();
 
@@ -29,7 +30,8 @@ attendanceRoutes.get(
   ah(async (req, res) => {
     const { page, limit, skip, take } = paging(req);
 
-    const where: Prisma.AttendanceWhereInput = {
+    // An EMPLOYEE only ever sees their own attendance, whatever they ask for.
+    const where: Prisma.AttendanceWhereInput = scopeToSelf(req, {
       ...(req.query.employee_id
         ? { employee_id: parseId(req.query.employee_id, "employee_id") }
         : {}),
@@ -44,7 +46,7 @@ attendanceRoutes.get(
             },
           }
         : {}),
-    };
+    });
 
     const [rows, total_records] = await Promise.all([
       prisma.attendance.findMany({
@@ -68,6 +70,7 @@ attendanceRoutes.post(
     requireFields(req.body, ["employee_id", "check_in"]);
 
     const employee_id = parseId(req.body.employee_id, "employee_id");
+    assertSelfOrPrivileged(req, employee_id);
     const check_in = parseDate(req.body.check_in, "check_in");
     const check_out = parseOptionalDate(req.body.check_out, "check_out");
 
@@ -103,6 +106,7 @@ attendanceRoutes.patch(
     const id = parseId(req.params.id);
     const existing = await prisma.attendance.findUnique({ where: { id } });
     if (!existing) throw notFound("Attendance");
+    assertSelfOrPrivileged(req, existing.employee_id);
 
     const check_in =
       req.body.check_in !== undefined ? parseDate(req.body.check_in, "check_in") : existing.check_in;

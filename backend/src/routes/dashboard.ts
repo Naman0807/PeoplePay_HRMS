@@ -3,11 +3,14 @@ import { Prisma } from "@prisma/client";
 import { ah } from "../lib/async";
 import { prisma } from "../lib/prisma";
 import { badRequest, ok } from "../lib/response";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireRole } from "../middleware/auth";
+import { PAYROLL_VIEW_ROLES } from "../lib/rbac";
 
 export const dashboardRoutes = Router();
 
 dashboardRoutes.use(requireAuth);
+// The KPIs are company-wide payroll totals; an EMPLOYEE has no business reading them.
+dashboardRoutes.use(requireRole(...PAYROLL_VIEW_ROLES));
 
 /**
  * Payslips counted by the KPIs: DONE and PAID only, never DRAFT. A draft payslip is

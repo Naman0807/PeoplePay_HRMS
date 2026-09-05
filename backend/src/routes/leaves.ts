@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { assertSelfOrPrivileged, scopeToSelf } from "../lib/rbac";
 
 export const leaveRoutes = Router();
 
@@ -22,12 +23,13 @@ leaveRoutes.get(
   ah(async (req, res) => {
     const { page, limit, skip, take } = paging(req);
 
-    const where: Prisma.LeaveRequestWhereInput = {
+    // An EMPLOYEE is narrowed to their own requests regardless of the query string.
+    const where: Prisma.LeaveRequestWhereInput = scopeToSelf(req, {
       ...(req.query.employee_id
         ? { employee_id: parseId(req.query.employee_id, "employee_id") }
         : {}),
       ...(req.query.state ? { state: parseOneOf(req.query.state, STATES, "state") } : {}),
-    };
+    });
 
     const [rows, total_records] = await Promise.all([
       prisma.leaveRequest.findMany({
@@ -52,6 +54,7 @@ leaveRoutes.get(
       include: { employee: true, leave_type: true, approver: true },
     });
     if (!request) throw notFound("Leave request");
+    assertSelfOrPrivileged(req, request.employee_id);
     return ok(res, request);
   })
 );
@@ -62,6 +65,9 @@ leaveRoutes.post(
     requireFields(req.body, ["employee_id", "leave_type_id", "date_from", "date_to"]);
 
     const employee_id = parseId(req.body.employee_id, "employee_id");
+    // employee_id arrives in the body, so it must be checked against the token —
+    // otherwise anyone can file leave in someone else's name.
+    assertSelfOrPrivileged(req, employee_id);
     const leave_type_id = parseId(req.body.leave_type_id, "leave_type_id");
     const date_from = parseDate(req.body.date_from, "date_from");
     const date_to = parseDate(req.body.date_to, "date_to");
@@ -233,6 +239,7 @@ leaveRoutes.get(
   "/balances/:employee_id",
   ah(async (req, res) => {
     const employee_id = parseId(req.params.employee_id, "employee_id");
+    assertSelfOrPrivileged(req, employee_id);
     const employee = await prisma.employee.findUnique({ where: { id: employee_id } });
     if (!employee) throw notFound("Employee");
 

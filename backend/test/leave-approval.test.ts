@@ -43,9 +43,15 @@ async function login(email: string) {
   return payload.data.token as string;
 }
 
-/** Files a request and returns its id. */
+/**
+ * Files a request for the fixture employee and returns its id.
+ *
+ * Filed with the manager token: an HR_MANAGER may file on behalf of anyone, while an
+ * EMPLOYEE may only file for themselves. Using the employee token here would be
+ * testing against the ownership hole rather than around it.
+ */
 async function request(days: number, from: string, to: string) {
-  const res = await post("/api/leave-requests", employeeToken, {
+  const res = await post("/api/leave-requests", managerToken, {
     employee_id,
     leave_type_id,
     date_from: from,
@@ -112,7 +118,7 @@ after(async () => {
 });
 
 test("a leave request is filed in TO_APPROVE", async () => {
-  const res = await post("/api/leave-requests", employeeToken, {
+  const res = await post("/api/leave-requests", managerToken, {
     employee_id,
     leave_type_id,
     date_from: "2026-05-04",
@@ -216,7 +222,7 @@ test("a leave type that needs no allocation approves without a balance", async (
   const type = await prisma.leaveType.create({
     data: { name: FIXTURE_TYPE, request_unit: "DAYS", requires_allocation: false },
   });
-  const filed = await post("/api/leave-requests", employeeToken, {
+  const filed = await post("/api/leave-requests", managerToken, {
     employee_id,
     leave_type_id: type.id,
     date_from: "2026-07-01",

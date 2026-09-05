@@ -6,6 +6,7 @@ import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, parseOptionalDate, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { assertSelfOrPrivileged } from "../lib/rbac";
 
 export const contractRoutes = Router();
 export const employeeContractRoutes = Router({ mergeParams: true });
@@ -36,6 +37,8 @@ employeeContractRoutes.get(
   requireAuth,
   ah(async (req, res) => {
     const employee_id = parseId(req.params.id, "employee_id");
+    // A contract carries the wage, so it is not readable across employees.
+    assertSelfOrPrivileged(req, employee_id);
     const employee = await prisma.employee.findUnique({ where: { id: employee_id } });
     if (!employee) throw notFound("Employee");
 
@@ -61,6 +64,7 @@ contractRoutes.get(
   ah(async (req, res) => {
     const contract = await prisma.contract.findUnique({ where: { id: parseId(req.params.id) } });
     if (!contract) throw notFound("Contract");
+    assertSelfOrPrivileged(req, contract.employee_id);
     return ok(res, contract);
   })
 );

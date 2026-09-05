@@ -6,10 +6,14 @@ import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/respo
 import { computeLines, DEFAULT_DAYS_PER_WEEK, workingDays } from "../lib/payroll";
 import { parseDate, parseId, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { PAYROLL_VIEW_ROLES } from "../lib/rbac";
 
 export const payrunRoutes = Router();
 
 payrunRoutes.use(requireAuth);
+// A payrun exposes the whole organisation's payroll, so no route here is readable
+// by a plain EMPLOYEE — not only the ones that change state.
+payrunRoutes.use(requireRole(...PAYROLL_VIEW_ROLES));
 
 const PAYROLL_ROLES = ["HR_PAYROLL_USER", "HR_PAYROLL_MANAGER"] as const;
 /** Confirming and paying a run is a manager action; computing is not. */
