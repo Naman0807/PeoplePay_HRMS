@@ -26,6 +26,36 @@ const eligibleContractWhere = (date_start: Date, date_end: Date): Prisma.Contrac
   OR: [{ end_date: null }, { end_date: { gte: date_start } }],
 });
 
+/**
+ * Optional employee_ids on compute. Absent means every eligible employee; present
+ * means exactly those. An empty array is rejected rather than treated as "all",
+ * since a payrun over nobody is far more likely to be a mistake than an intent.
+ */
+function parseEmployeeIds(raw: unknown): Set<number> | null {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw)) {
+    throw badRequest("employee_ids must be an array.", [
+      { field: "employee_ids", issue: "Expected an array of employee ids." },
+    ]);
+  }
+  if (!raw.length) {
+    throw badRequest("No employees selected.", [
+      { field: "employee_ids", issue: "Select at least one employee, or omit the field for all." },
+    ]);
+  }
+
+  const ids = raw.map((value) => {
+    const id = Number(value);
+    if (!Number.isInteger(id) || id < 1) {
+      throw badRequest("Invalid employee id.", [
+        { field: "employee_ids", issue: `Not a valid employee id: ${String(value)}` },
+      ]);
+    }
+    return id;
+  });
+  return new Set(ids);
+}
+
 function assertState(actual: string, expected: string[], action: string) {
   if (!expected.includes(actual)) {
     throw badRequest(`A payrun in ${actual} cannot be ${action}.`, [
@@ -147,13 +177,35 @@ payrunRoutes.post(
       orderBy: { employee_id: "asc" },
     });
 
+    // Step 2 of the wizard may narrow the run to a subset of the eligible employees.
+    // Omitted means every eligible employee, which is the common case. An id that is
+    // not eligible for this period is rejected rather than silently dropped — a
+    // caller that names an employee and gets no payslip must be told why.
+    const selected = parseEmployeeIds(req.body?.employee_ids);
+    if (selected) {
+      const eligible = new Set(contracts.map((c) => c.employee_id));
+      const unknown = [...selected].filter((id) => !eligible.has(id));
+      if (unknown.length) {
+        throw badRequest("Some selected employees are not eligible for this period.", [
+          {
+            field: "employee_ids",
+            issue: `No running contract covering ${payrun.date_start.toISOString().slice(0, 10)} to ${payrun.date_end.toISOString().slice(0, 10)}: ${unknown.join(", ")}`,
+          },
+        ]);
+      }
+    }
+
+    const included = selected
+      ? contracts.filter((c) => selected.has(c.employee_id))
+      : contracts;
+
     const seen = new Set<number>();
 
     const payslips = await prisma.$transaction(async (tx) => {
       await tx.payslip.deleteMany({ where: { payrun_id: id } });
 
       const created = [];
-      for (const contract of contracts) {
+      for (const contract of included) {
         // A second RUNNING contract for one employee in one period is flagged, not fatal.
         const duplicate = seen.has(contract.employee_id);
         seen.add(contract.employee_id);

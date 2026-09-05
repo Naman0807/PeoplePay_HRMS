@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { ah } from "../lib/async";
 import { prisma } from "../lib/prisma";
-import { badRequest, notFound, ok, okList, paging } from "../lib/response";
+import { badRequest, conflict, notFound, ok, okList, paging } from "../lib/response";
 import { parseDate, parseId, parseOneOf, parseOptionalDate, requireFields } from "../lib/validate";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { assertSelfOrPrivileged, scopeToSelf } from "../lib/rbac";
@@ -11,7 +11,11 @@ export const attendanceRoutes = Router();
 
 attendanceRoutes.use(requireAuth);
 
-const WRITE_ROLES = ["HR_MANAGER"] as const;
+// An EMPLOYEE may record their own attendance; assertSelfOrPrivileged below stops
+// them recording anyone else's. HR_MANAGER records on anyone's behalf. Payroll roles
+// are deliberately absent — they run payroll, they do not keep the time book.
+const WRITE_ROLES = ["HR_MANAGER", "EMPLOYEE"] as const;
+const EDIT_ROLES = ["HR_MANAGER"] as const;
 const STATUSES = ["PRESENT", "ABSENT"] as const;
 
 /**
@@ -83,6 +87,23 @@ attendanceRoutes.post(
     const employee = await prisma.employee.findUnique({ where: { id: employee_id } });
     if (!employee) throw notFound("Employee");
 
+    // One open entry at a time. Without this, clocking in twice leaves two rows with
+    // no check_out and no way to tell which one the next clock-out belongs to.
+    if (!check_out) {
+      const open = await prisma.attendance.findFirst({
+        where: { employee_id, check_out: null },
+        orderBy: { check_in: "desc" },
+      });
+      if (open) {
+        throw conflict("ALREADY_CHECKED_IN", "This employee is already checked in.", [
+          {
+            field: "check_in",
+            issue: `Open entry since ${open.check_in.toISOString()}. Check out first.`,
+          },
+        ]);
+      }
+    }
+
     const attendance = await prisma.attendance.create({
       data: {
         employee_id,
@@ -101,7 +122,7 @@ attendanceRoutes.post(
 
 attendanceRoutes.patch(
   "/:id",
-  requireRole(...WRITE_ROLES),
+  requireRole(...EDIT_ROLES),
   ah(async (req, res) => {
     const id = parseId(req.params.id);
     const existing = await prisma.attendance.findUnique({ where: { id } });
@@ -133,6 +154,45 @@ attendanceRoutes.patch(
           : {}),
         ...(req.body.status ? { status: parseOneOf(req.body.status, STATUSES, "status") } : {}),
       },
+      include: { employee: true },
+    });
+
+    return ok(res, attendance);
+  })
+);
+
+/**
+ * Clock out of the open entry. Separate from PATCH /:id because an employee may close
+ * their own entry but may not edit attendance generally — the times they already
+ * recorded are not theirs to rewrite.
+ */
+attendanceRoutes.patch(
+  "/:id/check-out",
+  ah(async (req, res) => {
+    const id = parseId(req.params.id);
+    const existing = await prisma.attendance.findUnique({ where: { id } });
+    if (!existing) throw notFound("Attendance");
+    assertSelfOrPrivileged(req, existing.employee_id);
+
+    if (existing.check_out) {
+      throw conflict("ALREADY_CHECKED_OUT", "This entry is already closed.", [
+        { field: "check_out", issue: `Checked out at ${existing.check_out.toISOString()}.` },
+      ]);
+    }
+
+    const check_out = req.body?.check_out
+      ? parseDate(req.body.check_out, "check_out")
+      : new Date();
+
+    if (check_out < existing.check_in) {
+      throw badRequest("Check-out is before check-in.", [
+        { field: "check_out", issue: "Must be at or after check_in." },
+      ]);
+    }
+
+    const attendance = await prisma.attendance.update({
+      where: { id },
+      data: { check_out, worked_hours: workedHours(existing.check_in, check_out) },
       include: { employee: true },
     });
 
