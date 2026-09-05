@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useFetch } from "@/lib/useFetch";
 import { Loading, ErrorBox, Empty } from "@/components/StatusStates";
-import { Card, PageHeader, Field } from "@/components/ui";
+import { Card, PageHeader, Field, EmptyState } from "@/components/ui";
+import { permissions } from "@/lib/permissions";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -17,16 +18,33 @@ function currentPeriod() {
 }
 
 export default function DashboardPage() {
+  const perms = permissions();
   const [period, setPeriod] = useState(currentPeriod());
   const [department, setDepartment] = useState("");
 
-  const kpiUrl = `/api/dashboard/kpis?period=${period}${department ? `&department=${department}` : ""}`;
-  const chartUrl = `/api/dashboard/salary-by-department?period=${period}`;
+  const kpiUrl = perms.canViewDashboard
+    ? `/api/dashboard/kpis?period=${period}${department ? `&department=${department}` : ""}`
+    : null;
+  const chartUrl = perms.canViewDashboard
+    ? `/api/dashboard/salary-by-department?period=${period}`
+    : null;
 
   const { data: kpis, loading: kpiLoading, error: kpiError, refetch: refetchKpis } = useFetch(kpiUrl);
   const { data: chart, loading: chartLoading, error: chartError, refetch: refetchChart } = useFetch(chartUrl);
 
   const maxAmount = chart?.length ? Math.max(...chart.map((d) => Number(d.total_gross ?? d.amount ?? 0))) : 0;
+
+  // The backend 403s this whole section for an EMPLOYEE — don't even fire the
+  // requests (see kpiUrl/chartUrl above), and show one clean message instead
+  // of two stacked error banners from calls that were never going to succeed.
+  if (!perms.canViewDashboard) {
+    return (
+      <div>
+        <PageHeader title="Dashboard" />
+        <EmptyState message="You don't have access to the dashboard. Ask an HR/payroll manager if you need it." />
+      </div>
+    );
+  }
 
   return (
     <div>
