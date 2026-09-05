@@ -259,9 +259,13 @@ Request/response `data` objects mirror the Prisma models field-for-field, using 
 | 404 | Employee, contract, payrun, etc. not found |
 | 409 | Contract overlap — the rule jury will test live |
 
+Every list endpoint (`/employees`, `/employees/:id/contracts`, `/attendances`, `/leave-requests`, `/payruns`) accepts `page=` and `limit=` (defaults `page=1`, `limit=20`) and returns `meta.total_records` as the full filtered count, not just the current page's length.
+
 **Auth**
 - `POST /api/auth/login`
 - `GET /api/auth/me`
+
+`login` accepts `{ login, password }`, returns `data: { token, user: { id, name, login, role, employee_id } }`. `me` returns `data: { id, name, login, role, employee_id }` — same `user` shape, no `token`. FE gates Approve/Refuse and other role-only actions off `user.role`.
 
 **Employee**
 - `GET /api/employees`
@@ -271,6 +275,7 @@ Request/response `data` objects mirror the Prisma models field-for-field, using 
 
 **Contract — the resolver lives here**
 - `GET /api/employees/:id/contracts`
+- `GET /api/contracts/:id`
 - `POST /api/contracts`
 - `PATCH /api/contracts/:id`
 
@@ -289,6 +294,7 @@ Request/response `data` objects mirror the Prisma models field-for-field, using 
 Approve endpoint deducts the allocation server-side (rule 4) — Frontend never computes the balance itself.
 
 **Payroll — the rule engine lives here**
+- `GET /api/payruns`
 - `POST /api/payruns`
 - `GET /api/payruns/:id/eligible-employees`
 - `POST /api/payruns/:id/compute`
