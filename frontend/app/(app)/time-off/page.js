@@ -26,13 +26,14 @@ const CAN_APPROVE_ROLES = ["HR_MANAGER", "HR_PAYROLL_MANAGER", "ADMIN"];
 
 export default function TimeOffPage() {
   const perms = permissions();
+  // Everyone files for themselves only — HR can browse/approve anyone's requests
+  // (the employeeId filter below), but can never submit one under someone else's
+  // name. ADMIN has no linked employee record, so they can't file at all.
+  const ownEmployeeId = perms.user?.employee_id ? String(perms.user.employee_id) : null;
   const { data: employees, loading: empLoading, error: empError } = useFetch("/api/employees");
-  // An employee files only for themselves, so preselect them. Leaving this empty
-  // meant the form posted whichever person the dropdown happened to land on, and the
-  // API correctly refused it with 403.
-  const [employeeId, setEmployeeId] = useState(() =>
-    perms.isEmployee && perms.user?.employee_id ? String(perms.user.employee_id) : ""
-  );
+  // Employees only ever see their own requests, so preselect them. HR/approver
+  // roles default to "All employees" — they need the full queue, not just their own.
+  const [employeeId, setEmployeeId] = useState(() => (perms.isEmployee ? ownEmployeeId || "" : ""));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +80,7 @@ export default function TimeOffPage() {
     setFormError(null);
     try {
       await api.post("/api/leave-requests", {
-        employee_id: Number(employeeId),
+        employee_id: Number(ownEmployeeId),
         leave_type_id: Number(form.leave_type_id),
         date_from: form.date_from,
         date_to: form.date_to,
@@ -117,7 +118,7 @@ export default function TimeOffPage() {
       <PageHeader
         title="Time Off"
         actions={
-          employeeId && (
+          ownEmployeeId && (
             <PrimaryButton onClick={() => setShowForm((v) => !v)}>
               {showForm ? "Cancel" : "Request leave"}
             </PrimaryButton>
@@ -128,19 +129,21 @@ export default function TimeOffPage() {
       <div className="mb-4 max-w-xs">
         {empLoading && <Loading />}
         {empError && <ErrorBox message={empError} />}
-        {/* Only staff who may file on someone else's behalf get to choose a person. */}
+        {/* Browsing/approving anyone's requests is separate from filing one — this
+            only ever changes which requests are listed below, never who a new
+            request is filed for (always the signed-in user, see ownEmployeeId). */}
         {employees && !perms.isEmployee && (
           <Select
-            label="Filter by employee (optional)"
+            label="Filter by employee"
             value={employeeId}
             onChange={setEmployeeId}
-            options={employees.map((e) => ({ value: String(e.id), label: e.name }))}
+            options={[{ value: "", label: "All employees" }, ...employees.map((e) => ({ value: String(e.id), label: e.name }))]}
             hint=""
           />
         )}
       </div>
 
-      {showForm && employeeId && (
+      {showForm && ownEmployeeId && (
         <Card className="mb-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && <ErrorBox message={formError} />}
