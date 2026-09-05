@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signup } from "@/lib/auth";
-import { Field, PrimaryButton, Card } from "@/components/ui";
+import { Field, Select, PrimaryButton, Card } from "@/components/ui";
+
+const ROLE_OPTIONS = [
+  { value: "EMPLOYEE", label: "Employee" },
+  { value: "HR_MANAGER", label: "HR Manager" },
+  { value: "HR_PAYROLL_USER", label: "HR Payroll User" },
+  { value: "HR_PAYROLL_MANAGER", label: "HR Payroll Manager" },
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -12,9 +19,11 @@ export default function SignupPage() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("EMPLOYEE");
   const [employeeId, setEmployeeId] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pending, setPending] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -27,13 +36,34 @@ export default function SignupPage() {
 
     setSubmitting(true);
     try {
-      await signup({ name, login: loginId, password, employee_id: employeeId });
-      router.push("/employees");
+      const result = await signup({ name, login: loginId, password, role, employee_id: employeeId });
+      if (result.pending) {
+        setPending(true);
+      } else {
+        router.push("/employees");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Could not create your account. Try again.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (pending) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        <Card className="w-full max-w-sm space-y-4 text-center shadow-md border-t-4 border-t-status-warning">
+          <div className="text-xl font-semibold tracking-tight text-text-primary">Request submitted</div>
+          <p className="text-sm text-text-muted">
+            Your account was created, but {ROLE_OPTIONS.find((r) => r.value === role)?.label} access needs
+            admin approval before you can sign in. Check back once your admin has approved it.
+          </p>
+          <Link href="/login" className="inline-block text-sm text-primary hover:underline">
+            Back to sign in
+          </Link>
+        </Card>
+      </main>
+    );
   }
 
   return (
@@ -81,6 +111,20 @@ export default function SignupPage() {
             value={confirmPassword}
             onChange={setConfirmPassword}
             autoComplete="new-password"
+            required
+          />
+
+          <Select
+            id="account-type"
+            label="Account type"
+            value={role}
+            onChange={setRole}
+            options={ROLE_OPTIONS}
+            hint={
+              role === "EMPLOYEE"
+                ? "Signs you in right away."
+                : "Requires admin approval before you can sign in — your account won't work until then."
+            }
             required
           />
 

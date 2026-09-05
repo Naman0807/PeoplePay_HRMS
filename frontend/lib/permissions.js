@@ -51,5 +51,9 @@ export function permissions(user = getUser()) {
     canApprovePayroll: has(user, APPROVE_PAYROLL),
 
     canViewDashboard: has(user, VIEW_PAYROLL),
+
+    // Approving a signup into an HR/payroll role is the one action that can grant
+    // that access — ADMIN only, no bypass list to widen here.
+    canApproveSignups: Boolean(user) && user.role === ROLES.ADMIN,
   };
 }

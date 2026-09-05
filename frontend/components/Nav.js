@@ -14,6 +14,7 @@ const LINKS = [
   // Payroll and Dashboard return 403 for an EMPLOYEE, so they are not offered.
   { href: "/payruns", label: "Payroll", requires: "canViewPayroll" },
   { href: "/dashboard", label: "Dashboard", requires: "canViewDashboard" },
+  { href: "/admin/pending-users", label: "Approvals", requires: "canApproveSignups" },
 ];
 
 export default function Nav() {
