@@ -5,11 +5,17 @@ import Link from "next/link";
 import { Plus, Search } from "lucide-react";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { permissions } from "@/lib/permissions";
 import {
   PageHeader,
+  Card,
+  Field,
+  Select,
+  PrimaryButton,
   Table,
   Badge,
   statusVariant,
+  Toast,
   Loading,
   ErrorBox,
   EmptyState,
@@ -33,6 +39,9 @@ function useAllContracts() {
   const [contracts, setContracts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Bumped to re-run the aggregation below after creating a contract — the employees
+  // list itself doesn't change, so useFetch's own refetch wouldn't re-trigger this.
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!employees) return;
@@ -62,18 +71,37 @@ function useAllContracts() {
     return () => {
       cancelled = true;
     };
-  }, [employees]);
+  }, [employees, version]);
 
   return {
     contracts,
+    employees,
     loading: employeesLoading || loading,
     error: employeesError || error,
+    refetch: () => setVersion((v) => v + 1),
   };
 }
 
+const EMPTY_FORM = {
+  employee_id: "",
+  reference: "",
+  wage: "",
+  start_date: "",
+  end_date: "",
+  state: "DRAFT",
+  resource_calendar_id: "",
+};
+
 export default function ContractsPage() {
-  const { contracts, loading, error } = useAllContracts();
+  const perms = permissions();
+  const { contracts, employees, loading, error, refetch } = useAllContracts();
   const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
+  const [overlapDetail, setOverlapDetail] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const filtered = (contracts || []).filter((c) => {
     const q = search.trim().toLowerCase();
@@ -81,20 +109,53 @@ export default function ContractsPage() {
     return c.reference.toLowerCase().includes(q) || c.employee_name.toLowerCase().includes(q);
   });
 
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+    setOverlapDetail(null);
+    try {
+      await api.post("/api/contracts", {
+        employee_id: Number(form.employee_id),
+        reference: form.reference,
+        wage: Number(form.wage),
+        start_date: form.start_date,
+        end_date: form.end_date || null,
+        state: form.state,
+        resource_calendar_id: form.resource_calendar_id ? Number(form.resource_calendar_id) : null,
+      });
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+      refetch();
+      setToast("Contract created successfully");
+    } catch (err) {
+      const body = err.response?.data;
+      if (body?.error === "CONTRACT_OVERLAP") {
+        setOverlapDetail(body.details?.[0]?.issue || body.message);
+      } else {
+        setFormError(body?.message || "Could not create contract.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader title="Contracts" />
       <p className="-mt-4 mb-6 text-sm text-text-muted">List view of employee contracts</p>
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Link
-          href="/employees"
-          className="flex w-fit items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
-          title="Pick an employee to add a contract under"
-        >
-          <Plus className="h-4 w-4" />
-          New
-        </Link>
+        {perms.canManageContracts && (
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            className="flex w-fit items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+          >
+            <Plus className="h-4 w-4" />
+            {showForm ? "Cancel" : "New"}
+          </button>
+        )}
         <div className="relative w-full sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
           <input
@@ -106,6 +167,60 @@ export default function ContractsPage() {
           />
         </div>
       </div>
+
+      {showForm && (
+        <Card className="mb-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {formError && <ErrorBox message={formError} />}
+            {overlapDetail && (
+              <div className="rounded-md border border-status-warning/30 bg-status-warning/10 px-3 py-2 text-sm text-status-warning">
+                <b>Contract overlap (409):</b> {overlapDetail}
+              </div>
+            )}
+            <Select
+              label="Employee"
+              value={form.employee_id}
+              onChange={(v) => setForm({ ...form, employee_id: v })}
+              options={(employees || []).map((e) => ({ value: String(e.id), label: e.name }))}
+              required
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Reference" value={form.reference} onChange={(v) => setForm({ ...form, reference: v })} required />
+              <Field label="Wage" type="number" value={form.wage} onChange={(v) => setForm({ ...form, wage: v })} required />
+              <Field
+                label="Start date"
+                type="date"
+                value={form.start_date}
+                onChange={(v) => setForm({ ...form, start_date: v })}
+                required
+              />
+              <Field label="End date" type="date" value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} />
+              <Select
+                label="State"
+                value={form.state}
+                onChange={(v) => setForm({ ...form, state: v })}
+                options={[
+                  { value: "DRAFT", label: "DRAFT" },
+                  { value: "RUNNING", label: "RUNNING" },
+                  { value: "EXPIRED", label: "EXPIRED" },
+                  { value: "CANCELLED", label: "CANCELLED" },
+                ]}
+                hint="Overlap check (409) only runs when state is RUNNING."
+              />
+              <Field
+                label="Resource calendar ID (optional)"
+                type="number"
+                value={form.resource_calendar_id}
+                onChange={(v) => setForm({ ...form, resource_calendar_id: v })}
+                hint="Blank falls back to the employee's own calendar."
+              />
+            </div>
+            <PrimaryButton type="submit" disabled={submitting}>
+              {submitting ? "Saving…" : "Save contract"}
+            </PrimaryButton>
+          </form>
+        </Card>
+      )}
 
       {loading && <Loading />}
       {error && <ErrorBox message={error} />}
@@ -138,6 +253,8 @@ export default function ContractsPage() {
         Useful note: retain contract history, but make the active Running contract obvious
         because payroll depends on it.
       </p>
+
+      <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
