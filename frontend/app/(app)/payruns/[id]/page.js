@@ -6,6 +6,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
 import { permissions } from "@/lib/permissions";
+import { openPayslipPdf } from "@/lib/downloadPdf";
 import {
   BackLink,
   PageHeader,
@@ -133,14 +134,13 @@ export default function PayrunDetailPage() {
                 )}
               </td>
               <td className="px-4 py-2">
-                <a
-                  href={`${api.defaults.baseURL}/api/payslips/${p.id}/pdf`}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => openPayslipPdf(p.id).catch(() => setActionError("Could not open the PDF."))}
                   className="text-sm font-medium text-gray-700 hover:underline"
                 >
                   PDF
-                </a>
+                </button>
               </td>
             </tr>
           ))}

@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
+import { openPayslipPdf } from "@/lib/downloadPdf";
 import {
   BackLink,
   PageHeader,
@@ -19,12 +20,20 @@ const formatter = new Intl.NumberFormat("en-IN", { style: "currency", currency: 
 export default function PayslipPage() {
   const { id } = useParams();
   const { data: payslip, loading, error, refetch } = useFetch(`/api/payslips/${id}`);
+  const [pdfError, setPdfError] = useState(null);
 
   if (loading) return <Loading />;
   if (error) return <ErrorBox message={error} onRetry={refetch} />;
   if (!payslip) return null;
 
-  const pdfUrl = `${api.defaults.baseURL}/api/payslips/${id}/pdf`;
+  async function handleDownload() {
+    setPdfError(null);
+    try {
+      await openPayslipPdf(id);
+    } catch (err) {
+      setPdfError(err.response?.data?.message || "Could not open the PDF.");
+    }
+  }
 
   return (
     <div className="max-w-xl">
@@ -33,16 +42,16 @@ export default function PayslipPage() {
         <PageHeader
           title={`Payslip #${payslip.id}`}
           actions={
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={handleDownload}
               className="text-sm font-medium text-gray-700 hover:underline"
             >
               Download PDF →
-            </a>
+            </button>
           }
         />
+        {pdfError && <ErrorBox message={pdfError} />}
       </div>
 
       <Card className="mb-4">
