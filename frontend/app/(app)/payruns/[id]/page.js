@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
@@ -27,6 +27,12 @@ const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: 
 // current payrun's state is read out of the /api/payruns list by id.
 export default function PayrunDetailPage() {
   const perms = permissions();
+  // The wizard passes its selection through the query string; absent means everyone.
+  const searchParams = useSearchParams();
+  const selected = searchParams.get("employees");
+  const employeeIds = selected
+    ? selected.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    : null;
   const { id } = useParams();
   const { data: payruns, loading, error, refetch } = useFetch("/api/payruns");
   const payrun = payruns?.find((p) => String(p.id) === String(id));
@@ -42,7 +48,10 @@ export default function PayrunDetailPage() {
     setBusy(action);
     setActionError(null);
     try {
-      const res = await api.post(`/api/payruns/${id}/${action}`);
+      const res = await api.post(
+        `/api/payruns/${id}/${action}`,
+        action === "compute" && employeeIds ? { employee_ids: employeeIds } : undefined
+      );
       // compute returns { payrun_id, state, payslip_count, warnings, payslips: [...] },
       // so the array is nested — res.data.data is the wrapper, not the list.
       if (action === "compute") setPayslips(res.data.data.payslips);

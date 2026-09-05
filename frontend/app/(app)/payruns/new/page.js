@@ -24,9 +24,18 @@ export default function NewPayrunPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  // Employees left ticked when Continue is pressed. Passed to compute as employee_ids,
+  // which the backend honours; an empty selection is refused there and here.
+  const [excluded, setExcluded] = useState(() => new Set());
 
   const eligibleUrl = payrunId ? `/api/payruns/${payrunId}/eligible-employees` : null;
   const { data: eligible, loading: eligLoading, error: eligError, refetch } = useFetch(eligibleUrl);
+
+  // Everything still ticked. A full selection sends no filter at all, so the common
+  // case stays the plain "compute for everyone" request.
+  const selectedIds = (eligible || [])
+    .map((e) => e.employee_id)
+    .filter((id) => !excluded.has(id));
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -89,12 +98,42 @@ export default function NewPayrunPage() {
             <ul className="rounded-lg border border-gray-200 p-2 text-sm">
               {eligible.map((e) => (
                 <li key={e.employee_id} className="border-b border-gray-100 py-1.5 last:border-0">
-                  {e.name}
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={!excluded.has(e.employee_id)}
+                      onChange={() =>
+                        setExcluded((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(e.employee_id)) next.delete(e.employee_id);
+                          else next.add(e.employee_id);
+                          return next;
+                        })
+                      }
+                    />
+                    <span>{e.name}</span>
+                    <span className="text-gray-500">· {e.department || "—"}</span>
+                  </label>
                 </li>
               ))}
             </ul>
           )}
-          <PrimaryButton onClick={() => router.push(`/payruns/${payrunId}`)}>
+          {selectedIds.length === 0 && eligible?.length > 0 && (
+            <p role="alert" className="mt-2 text-sm text-red-700">
+              Select at least one employee to continue.
+            </p>
+          )}
+          <PrimaryButton
+            disabled={selectedIds.length === 0}
+            onClick={() =>
+              router.push(
+                `/payruns/${payrunId}${
+                  selectedIds.length === eligible.length ? "" : `?employees=${selectedIds.join(",")}`
+                }`
+              )
+            }
+          >
             Continue to compute →
           </PrimaryButton>
         </Card>

@@ -24,7 +24,13 @@ const EMPTY_FORM = { check_in: "", check_out: "", status: "PRESENT", notes: "" }
 export default function AttendancePage() {
   const perms = permissions();
   const { data: employees, loading: empLoading, error: empError } = useFetch("/api/employees");
-  const [employeeId, setEmployeeId] = useState("");
+  // An employee only ever sees their own rows, so preselect them rather than making
+  // them pick themselves out of a list. Lazy initial state, not an effect.
+  const [employeeId, setEmployeeId] = useState(() =>
+    perms.isEmployee && perms.user?.employee_id ? String(perms.user.employee_id) : ""
+  );
+  const [clocking, setClocking] = useState(false);
+  const [clockError, setClockError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +39,32 @@ export default function AttendancePage() {
 
   const url = employeeId ? `/api/attendances?employee_id=${employeeId}` : null;
   const { data, loading, error, refetch } = useFetch(url);
+
+  // The row still open, if any — one at a time is enforced by the backend.
+  const openEntry = (data || []).find((a) => !a.check_out);
+  const canClock = perms.isEmployee && Boolean(perms.user?.employee_id);
+
+  async function handleClock() {
+    setClocking(true);
+    setClockError(null);
+    try {
+      if (openEntry) {
+        await api.patch(`/api/attendances/${openEntry.id}/check-out`, {});
+        setToast("Clocked out");
+      } else {
+        await api.post("/api/attendances", {
+          employee_id: Number(perms.user.employee_id),
+          check_in: new Date().toISOString(),
+        });
+        setToast("Clocked in");
+      }
+      refetch();
+    } catch (err) {
+      setClockError(err.response?.data?.message || "Could not record attendance.");
+    } finally {
+      setClocking(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -62,13 +94,35 @@ export default function AttendancePage() {
       <PageHeader
         title="Attendance"
         actions={
-          perms.canManageAttendance && (
-          <PrimaryButton onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "Cancel" : "Add entry"}
-          </PrimaryButton>
-          )
+          <>
+            {canClock && (
+              <PrimaryButton onClick={handleClock} disabled={clocking}>
+                {clocking
+                  ? "Saving…"
+                  : openEntry
+                    ? "Clock out"
+                    : "Clock in"}
+              </PrimaryButton>
+            )}
+            {perms.canManageAttendance && (
+              <PrimaryButton onClick={() => setShowForm((v) => !v)}>
+                {showForm ? "Cancel" : "Add entry"}
+              </PrimaryButton>
+            )}
+          </>
         }
       />
+
+      {clockError && (
+        <div role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {clockError}
+        </div>
+      )}
+      {canClock && openEntry && (
+        <p className="mb-4 text-sm text-gray-600">
+          Clocked in since {new Date(openEntry.check_in).toLocaleString()}.
+        </p>
+      )}
 
       <div className="mb-4 max-w-xs">
         {empLoading && <Loading />}
