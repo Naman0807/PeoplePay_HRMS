@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -14,6 +14,8 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { getUser, logout } from "@/lib/auth";
 import { permissions } from "@/lib/permissions";
@@ -28,6 +30,8 @@ const LINKS = [
   { href: "/payruns", label: "Payroll", icon: Wallet, requires: "canViewPayroll" },
   { href: "/admin/pending-users", label: "Approvals", icon: ShieldCheck, requires: "canApproveSignups" },
 ];
+
+const COLLAPSE_KEY = "sidebar-collapsed";
 
 function initials(name) {
   return (name || "")
@@ -45,6 +49,29 @@ export default function Sidebar() {
   const perms = permissions(user);
   const links = LINKS.filter((l) => !l.requires || perms[l.requires]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Desktop-only: collapses to an icon rail. Remembered per browser — a per-viewer
+  // convenience, not data that needs to sync anywhere, so localStorage is fine here.
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {
+      // Private browsing / storage blocked — just stay expanded.
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        // Ignore — nothing to persist to, the toggle still works for this session.
+      }
+      return next;
+    });
+  }
 
   function isActive(href) {
     return pathname === href || pathname.startsWith(href + "/");
@@ -55,12 +82,14 @@ export default function Sidebar() {
     router.replace("/login");
   }
 
-  const linkClass = (href) =>
+  const linkClass = (href, isCollapsed) =>
     `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      isCollapsed ? "justify-center px-2" : ""
+    } ${
       isActive(href) ? "bg-primary/15 text-status-active" : "text-text-muted hover:bg-background/60 hover:text-text-primary"
     }`;
 
-  const NavLinks = () => (
+  const NavLinks = ({ isCollapsed = false }) => (
     <nav className="flex flex-1 flex-col gap-1 px-3">
       {links.map((l) => {
         const Icon = l.icon;
@@ -70,36 +99,44 @@ export default function Sidebar() {
             href={l.href}
             aria-current={isActive(l.href) ? "page" : undefined}
             onClick={() => setMobileOpen(false)}
-            className={linkClass(l.href)}
+            title={isCollapsed ? l.label : undefined}
+            className={linkClass(l.href, isCollapsed)}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {l.label}
+            {!isCollapsed && l.label}
           </Link>
         );
       })}
     </nav>
   );
 
-  const UserFooter = () => (
+  const UserFooter = ({ isCollapsed = false }) => (
     <div className="border-t border-border p-3">
       {user && (
-        <div className="mb-2 flex items-center gap-2 rounded-md border border-border bg-background/40 p-2">
+        <div
+          className={`mb-2 flex items-center gap-2 rounded-md border border-border bg-background/40 p-2 ${
+            isCollapsed ? "justify-center" : ""
+          }`}
+        >
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ff8a7a] text-[10px] font-bold text-white">
             {initials(user.name)}
           </span>
-          <div className="min-w-0">
-            <div className="truncate text-xs font-medium text-text-primary">{user.name}</div>
-            <div className="truncate text-[11px] text-text-muted">{user.role}</div>
-          </div>
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <div className="truncate text-xs font-medium text-text-primary">{user.name}</div>
+              <div className="truncate text-[11px] text-text-muted">{user.role}</div>
+            </div>
+          )}
         </div>
       )}
       <button
         type="button"
         onClick={handleLogout}
+        title={isCollapsed ? "Log out" : undefined}
         className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
       >
         <LogOut className="h-3.5 w-3.5" />
-        Log out
+        {!isCollapsed && "Log out"}
       </button>
     </div>
   );
@@ -141,13 +178,43 @@ export default function Sidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface py-4 md:flex">
-        <div className="mb-6 flex items-center gap-2 px-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-white">PP</span>
-          <span className="text-sm font-semibold tracking-tight text-text-primary">PeoplePay360</span>
+      <aside
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-surface py-4 transition-all md:flex ${
+          collapsed ? "w-16" : "w-60"
+        }`}
+      >
+        <div className={`mb-6 flex items-center px-3 ${collapsed ? "justify-center" : "justify-between"}`}>
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-white">
+              PP
+            </span>
+            {!collapsed && <span className="text-sm font-semibold tracking-tight text-text-primary">PeoplePay360</span>}
+          </div>
+          {!collapsed && (
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label="Collapse sidebar"
+              className="rounded p-1 text-text-muted hover:bg-background/60 hover:text-text-primary"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        <NavLinks />
-        <UserFooter />
+
+        {collapsed && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="Expand sidebar"
+            className="mx-3 mb-4 flex items-center justify-center rounded-md p-1.5 text-text-muted hover:bg-background/60 hover:text-text-primary"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+
+        <NavLinks isCollapsed={collapsed} />
+        <UserFooter isCollapsed={collapsed} />
       </aside>
     </>
   );
