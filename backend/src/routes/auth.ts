@@ -4,7 +4,7 @@ import { Router } from "express";
 import { ah } from "../lib/async";
 import { prisma } from "../lib/prisma";
 import { badRequest, conflict, notFound, ok, unauthorized } from "../lib/response";
-import { parseId, requireFields } from "../lib/validate";
+import { parseId, parseOneOf, requireFields } from "../lib/validate";
 import { requireAuth, signToken } from "../middleware/auth";
 
 export const authRoutes = Router();
@@ -34,18 +34,29 @@ authRoutes.post(
   })
 );
 
+// A self-signup can request any of these. ADMIN is deliberately excluded — even
+// behind approval, handing out the one role that bypasses every other check isn't
+// something a public form should offer; an existing ADMIN can promote someone
+// directly if that's ever needed.
+const SELF_SERVICE_ROLES = ["EMPLOYEE", "HR_MANAGER", "HR_PAYROLL_USER", "HR_PAYROLL_MANAGER"] as const;
+
 /**
- * Self-service signup. New accounts are always role EMPLOYEE — there is no path here
- * to hand yourself HR/payroll access. employee_id is optional and unvalidated against
- * the employees table by design: linking an account to an employee record is HR's
- * job, not something a signup form can prove. Until that link exists, self-service
- * screens that require employee_id (Time Off, Attendance clock-in) won't work for
- * this account — that's a real gap, not something this endpoint pretends to solve.
+ * Self-service signup. Requesting EMPLOYEE activates immediately, same as before.
+ * Requesting anything else creates the account correctly roled but INACTIVE — it
+ * can't log in (see the status check in /login above) until an ADMIN approves it
+ * via /api/admin/pending-users. Nobody gets HR/payroll access to themselves purely
+ * by asking for it.
+ *
+ * employee_id is optional and unvalidated against *who* the caller is — linking an
+ * account to a specific employee record still isn't something a signup form can
+ * prove, whatever role is requested.
  */
 authRoutes.post(
   "/signup",
   ah(async (req, res) => {
     requireFields(req.body, ["name", "login", "password"]);
+
+    const role = req.body.role ? parseOneOf(req.body.role, SELF_SERVICE_ROLES, "role") : "EMPLOYEE";
 
     const password = String(req.body.password);
     if (password.length < 8) {
@@ -78,6 +89,7 @@ authRoutes.post(
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+    const needsApproval = role !== "EMPLOYEE";
 
     const user = await prisma.user
       .create({
@@ -85,8 +97,9 @@ authRoutes.post(
           name: String(req.body.name),
           login: String(req.body.login),
           password_hash,
-          role: "EMPLOYEE",
+          role,
           employee_id,
+          status: needsApproval ? "INACTIVE" : "ACTIVE",
         },
       })
       .catch((err) => {
@@ -98,8 +111,14 @@ authRoutes.post(
         throw err;
       });
 
+    // Inactive means it can't authenticate yet — no token to hand out. The frontend
+    // shows a "pending approval" message instead of logging the account straight in.
+    if (needsApproval) {
+      return ok(res, { pending: true, user: publicUser(user) }, 201);
+    }
+
     const token = signToken({ user_id: user.id, role: user.role, employee_id: user.employee_id });
-    return ok(res, { token, user: publicUser(user) }, 201);
+    return ok(res, { pending: false, token, user: publicUser(user) }, 201);
   })
 );
 
