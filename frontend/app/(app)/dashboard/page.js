@@ -87,24 +87,17 @@ export default function DashboardPage() {
           <Card
             role="img"
             aria-label="Bar chart comparing total gross and total net payroll for the selected period"
-            className="space-y-3"
           >
-            {[
-              { label: "Total gross", value: Number(kpis.total_gross), color: "bg-status-success" },
-              { label: "Total net", value: Number(kpis.total_net), color: "bg-status-active" },
-            ].map((row) => {
-              const max = Math.max(Number(kpis.total_gross), Number(kpis.total_net)) || 1;
-              const pct = Math.round((row.value / max) * 100);
-              return (
-                <div key={row.label} className="flex items-center gap-3 text-sm">
-                  <div className="w-28 shrink-0 text-text-muted">{row.label}</div>
-                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-surface">
-                    <div className={`h-full rounded-full ${row.color} transition-all`} style={{ width: `${pct}%` }} />
-                  </div>
-                  <div className="w-24 shrink-0 text-right text-text-muted">{formatMoney(row.value)}</div>
-                </div>
-              );
-            })}
+            <div className="flex items-end justify-center gap-10">
+              {[
+                { label: "Total gross", value: Number(kpis.total_gross), color: "bg-status-success" },
+                { label: "Total net", value: Number(kpis.total_net), color: "bg-status-active" },
+              ].map((row) => {
+                const max = Math.max(Number(kpis.total_gross), Number(kpis.total_net)) || 1;
+                const pct = Math.round((row.value / max) * 100);
+                return <VerticalBar key={row.label} label={row.label} value={formatMoney(row.value)} pct={pct} color={row.color} />;
+              })}
+            </div>
           </Card>
         </div>
       )}
@@ -117,24 +110,22 @@ export default function DashboardPage() {
         <Card
           role="img"
           aria-label="Bar chart of total gross salary by department for the selected period"
-          className="space-y-3"
         >
-          {chart.map((row) => {
-            const amount = Number(row.total_gross ?? row.amount ?? 0);
-            const pct = maxAmount ? Math.round((amount / maxAmount) * 100) : 0;
-            return (
-              <div key={row.department} className="flex items-center gap-3 text-sm">
-                <div className="w-28 shrink-0 text-text-muted">{row.department}</div>
-                <div className="h-4 flex-1 overflow-hidden rounded-full bg-surface">
-                  <div
-                    className="h-full rounded-full bg-status-success transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <div className="w-24 shrink-0 text-right text-text-muted">{formatMoney(amount)}</div>
-              </div>
-            );
-          })}
+          <div className="flex items-end justify-center gap-8 overflow-x-auto">
+            {chart.map((row) => {
+              const amount = Number(row.total_gross ?? row.amount ?? 0);
+              const pct = maxAmount ? Math.round((amount / maxAmount) * 100) : 0;
+              return (
+                <VerticalBar
+                  key={row.department}
+                  label={row.department}
+                  value={formatMoney(amount)}
+                  pct={pct}
+                  color="bg-status-success"
+                />
+              );
+            })}
+          </div>
         </Card>
       )}
     </div>
@@ -145,6 +136,18 @@ function formatMoney(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return value ?? "—";
   return currency.format(num);
+}
+
+function VerticalBar({ label, value, pct, color }) {
+  return (
+    <div className="flex w-16 shrink-0 flex-col items-center gap-2">
+      <div className="text-xs text-text-muted">{value}</div>
+      <div className="flex h-40 w-8 items-end overflow-hidden rounded-t-md bg-surface">
+        <div className={`w-full rounded-t-md ${color} transition-all`} style={{ height: `${pct}%` }} />
+      </div>
+      <div className="text-center text-xs text-text-muted">{label}</div>
+    </div>
+  );
 }
 
 function KpiCard({ label, value }) {

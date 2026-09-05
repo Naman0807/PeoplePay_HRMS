@@ -7,13 +7,13 @@ import { getUser, logout } from "@/lib/auth";
 import { permissions } from "@/lib/permissions";
 
 const LINKS = [
+  // Dashboard and Payroll return 403 for an EMPLOYEE, so they are not offered.
+  { href: "/dashboard", label: "Dashboard", requires: "canViewDashboard" },
   { href: "/employees", label: "Employees" },
   { href: "/contracts", label: "Contracts" },
   { href: "/attendance", label: "Attendance" },
   { href: "/time-off", label: "Time Off" },
-  // Payroll and Dashboard return 403 for an EMPLOYEE, so they are not offered.
   { href: "/payruns", label: "Payroll", requires: "canViewPayroll" },
-  { href: "/dashboard", label: "Dashboard", requires: "canViewDashboard" },
   { href: "/admin/pending-users", label: "Approvals", requires: "canApproveSignups" },
 ];
 
