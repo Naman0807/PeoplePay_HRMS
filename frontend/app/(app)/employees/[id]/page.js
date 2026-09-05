@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -25,17 +25,15 @@ export default function EmployeeDetailPage() {
   const [saveError, setSaveError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    if (employee) {
-      setForm({
-        name: employee.name,
-        work_email: employee.work_email,
-        department: employee.department || "",
-        job_title: employee.job_title || "",
-        status: employee.status,
-      });
-    }
-  }, [employee]);
+  if (employee && form === null) {
+    setForm({
+      name: employee.name,
+      work_email: employee.work_email,
+      department: employee.department || "",
+      job_title: employee.job_title || "",
+      status: employee.status,
+    });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();

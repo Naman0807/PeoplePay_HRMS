@@ -23,6 +23,7 @@ export function useFetch(url) {
   }, [url]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     run();
   }, [run]);
 

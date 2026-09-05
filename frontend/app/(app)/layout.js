@@ -7,13 +7,11 @@ import Nav from "@/components/Nav";
 
 export default function AppLayout({ children }) {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [ready] = useState(() => !!getUser());
 
   useEffect(() => {
     if (!getUser()) {
       router.replace("/login");
-    } else {
-      setReady(true);
     }
   }, [router]);
 
