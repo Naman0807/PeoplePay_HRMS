@@ -8,6 +8,7 @@ import { permissions } from "@/lib/permissions";
 
 const LINKS = [
   { href: "/employees", label: "Employees" },
+  { href: "/contracts", label: "Contracts" },
   { href: "/attendance", label: "Attendance" },
   { href: "/time-off", label: "Time Off" },
   // Payroll and Dashboard return 403 for an EMPLOYEE, so they are not offered.

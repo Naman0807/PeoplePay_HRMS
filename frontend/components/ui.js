@@ -15,20 +15,21 @@ const VARIANT_CLASSES = {
 
 export function statusVariant(status) {
   const value = String(status || "").toUpperCase();
-  if (["ACTIVE", "PRESENT", "PAID", "CONFIRMED", "APPROVED"].includes(value)) {
+  // RUNNING is a contract's "money is flowing" state — success/green, matching the
+  // design system's "Running"/"Active"/"Present" -> text-status-success rule.
+  if (["ACTIVE", "PRESENT", "PAID", "CONFIRMED", "APPROVED", "RUNNING"].includes(value)) {
     return "success";
   }
   if (["INACTIVE", "ABSENT", "REFUSED"].includes(value)) {
     return "danger";
   }
-  if (["CANCELLED", "EXPIRED"].includes(value)) {
-    return "neutral";
-  }
-  if (["DRAFT", "TO_APPROVE", "PENDING"].includes(value)) {
+  // EXPIRED needs attention (payroll depends on Running, not Expired, contracts) —
+  // warning/orange, per "Expired" -> text-status-warning. CANCELLED stays neutral.
+  if (["EXPIRED", "DRAFT", "TO_APPROVE", "PENDING"].includes(value)) {
     return "warning";
   }
-  if (value === "RUNNING") {
-    return "info";
+  if (value === "CANCELLED") {
+    return "neutral";
   }
   return "neutral";
 }
