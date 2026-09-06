@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
 
 export const punchInSchema = z.object({});
 
 export const punchOutSchema = z.object({});
 
 export const listAttendanceQuerySchema = z.object({
+  ...paginationFields,
   employeeId: z.string().uuid().optional(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

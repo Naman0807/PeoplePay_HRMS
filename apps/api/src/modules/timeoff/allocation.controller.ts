@@ -4,11 +4,10 @@ import { ok, created } from '../../utils/apiResponse';
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const employeeId = req.query.employee_id as string | undefined;
     const allocations = await allocationService.listAllocations(
       req.user!.id,
       req.user!.role,
-      employeeId
+      req.query as any
     );
     res.json(ok(allocations));
   } catch (err) {

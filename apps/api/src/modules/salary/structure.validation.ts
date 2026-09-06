@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
+
+export const listStructuresQuerySchema = z.object({ ...paginationFields });
+export type ListStructuresQuery = z.infer<typeof listStructuresQuerySchema>;
 
 export const createStructureSchema = z.object({
   name: z.string().min(1).max(100),

@@ -4,10 +4,17 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/src/components/layout/PageHeader';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { DataTable, type Column } from '@/src/components/layout/DataTable';
 import { StatusBadge } from '@/src/components/layout/StatusBadge';
 import { EmptyState } from '@/src/components/layout/EmptyState';
-import { useEmployees, useDepartments, type Employee } from '@/src/lib/api/queries';
+import {
+  useEmployees,
+  useDepartments,
+  useDeleteEmployee,
+  type Employee,
+} from '@/src/lib/api/queries';
+import { ConfirmDialog } from '@/src/components/layout/ConfirmDialog';
 import { RequireAuth } from '@/src/components/auth/RequireAuth';
 
 function Avatar({ firstName, lastName }: { firstName: string; lastName: string }) {
@@ -52,6 +59,8 @@ function EmployeesPageContent() {
     status: status ? (status as 'ACTIVE' | 'INACTIVE') : undefined,
   });
   const { data: departments } = useDepartments();
+  const deleteEmployee = useDeleteEmployee();
+  const [deleting, setDeleting] = useState<Employee | null>(null);
 
   const employees = Array.isArray(data) ? data : (data?.items ?? []);
   const meta = Array.isArray(data) ? undefined : data?.meta;
@@ -100,6 +109,16 @@ function EmployeesPageContent() {
         <div className="flex items-center gap-1">
           <ActionLink href={`/employees/${row.id}/edit`} label="View" />
           <ActionLink href={`/employees/${row.id}/edit`} label="Edit" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleting(row);
+            }}
+            className="rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+          >
+            Delete
+          </button>
         </div>
       ),
     },
@@ -232,31 +251,27 @@ function EmployeesPageContent() {
         />
       )}
 
-      {!isLoading && !isError && employees.length > 0 && totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            Page {page} of {totalPages} · {meta?.total} employees
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+            <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={meta?.total}
+        label="employees"
+        onChange={setPage}
+      />
+
+      <ConfirmDialog
+        open={!!deleting}
+        title="Delete employee"
+        message={`Delete ${deleting?.first_name ?? ''} ${deleting?.last_name ?? ''}? This cannot be undone.`}
+        confirmLabel="Delete"
+        danger
+        loading={deleteEmployee.isPending}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return;
+          deleteEmployee.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
+        }}
+      />
     </div>
   );
 }

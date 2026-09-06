@@ -6,22 +6,8 @@ import { PageHeader } from '@/src/components/layout/PageHeader';
 import { LoadingSpinner } from '@/src/components/layout/LoadingSpinner';
 import { EmptyState } from '@/src/components/layout/EmptyState';
 import { StatusBadge } from '@/src/components/layout/StatusBadge';
-import { apiFetch, ApiError } from '@/src/lib/api/client';
+import { useDirectory, useDepartments } from '@/src/lib/api/queries';
 
-interface DirectoryEmployee {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  job_position: string;
-  department: { id: string; name: string } | null;
-  status: string;
-}
-
-interface Department {
-  id: string;
-  name: string;
-}
 
 const AVATAR_COLORS = [
   'bg-slate-700',
@@ -50,50 +36,21 @@ export default function TeamPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [departmentId, setDepartmentId] = useState('');
-  const [employees, setEmployees] = useState<DirectoryEmployee[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => {
-    apiFetch<Department[]>('/departments')
-      .then((data) => setDepartments(data ?? []))
-      .catch(() => setDepartments([]));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    const params = new URLSearchParams();
-    if (debouncedSearch) params.set('search', debouncedSearch);
-    if (departmentId) params.set('departmentId', departmentId);
-    const query = params.toString();
-
-    apiFetch<DirectoryEmployee[]>(`/employees/directory${query ? `?${query}` : ''}`)
-      .then((data) => {
-        if (!cancelled) setEmployees(data ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setEmployees([]);
-          setError(err instanceof ApiError ? err.message : 'Failed to load team members');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedSearch, departmentId]);
+  const { data: departments = [] } = useDepartments();
+  const {
+    data: employees = [],
+    isLoading: loading,
+    error: queryError,
+  } = useDirectory({
+    search: debouncedSearch || undefined,
+    departmentId: departmentId || undefined,
+  });
+  const error = queryError ? (queryError as Error).message : null;
 
   return (
     <RequireAuth capability="VIEW_TEAM_DIRECTORY">

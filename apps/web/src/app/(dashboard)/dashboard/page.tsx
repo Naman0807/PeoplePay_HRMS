@@ -28,6 +28,7 @@ import {
   useTimeOffAllocations,
   useTimeOffRequests,
   usePayslips,
+  listOf,
 } from '@/src/lib/api/queries';
 
 function formatShortDate(iso: string): string {
@@ -48,6 +49,11 @@ function toLocalDateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+/** `date` is a date-only column, serialised as midnight UTC. Read it as UTC. */
+function toDateOnlyKey(iso: string): string {
+  return iso.slice(0, 10);
 }
 
 function money(value: number | string): string {
@@ -399,12 +405,12 @@ function PersonalDashboard() {
     data: attendance,
     isLoading: attendanceLoading,
     isError: attendanceError,
-  } = useMyAttendance();
+  } = useMyAttendance({ pageSize: 100 });
   const {
     data: allocations,
     isLoading: allocationsLoading,
     isError: allocationsError,
-  } = useTimeOffAllocations();
+  } = useTimeOffAllocations({ pageSize: 100 });
   const {
     data: payslipsData,
     isLoading: payslipsLoading,
@@ -414,14 +420,18 @@ function PersonalDashboard() {
     data: requests,
     isLoading: requestsLoading,
     isError: requestsError,
-  } = useTimeOffRequests();
+  } = useTimeOffRequests({ pageSize: 100 });
+
+  const attendanceRows = listOf(attendance);
+  const allocationRows = listOf(allocations);
+  const requestRows = listOf(requests);
 
   const firstName = employee?.first_name ?? user?.email?.split('@')[0] ?? 'there';
   const payslips = Array.isArray(payslipsData) ? payslipsData : (payslipsData?.items ?? []);
 
   const todayKey = toLocalDateKey(new Date());
-  const todayRecord = (attendance ?? []).find(
-    (r) => toLocalDateKey(new Date(r.date)) === todayKey
+  const todayRecord = attendanceRows.find(
+    (r) => toDateOnlyKey(r.date) === todayKey
   );
 
   const balances = useMemo(() => {
@@ -436,7 +446,7 @@ function PersonalDashboard() {
         remaining: number;
       }
     >();
-    for (const a of allocations ?? []) {
+    for (const a of allocationRows) {
       const key = a.time_off_type_id;
       const entry =
         map.get(key) ?? {
@@ -575,12 +585,12 @@ function PersonalDashboard() {
           <CardState
             isLoading={requestsLoading}
             isError={requestsError}
-            isEmpty={(requests ?? []).length === 0}
+            isEmpty={requestRows.length === 0}
             emptyMessage="No time off requests yet."
           />
-          {!requestsLoading && !requestsError && (requests ?? []).length > 0 && (
+          {!requestsLoading && !requestsError && requestRows.length > 0 && (
             <ul className="divide-y divide-slate-100">
-              {(requests ?? []).slice(0, 5).map((r) => (
+              {requestRows.slice(0, 5).map((r) => (
                 <li key={r.id} className="flex items-center justify-between py-2.5">
                   <div>
                     <p className="text-sm font-medium text-slate-900">

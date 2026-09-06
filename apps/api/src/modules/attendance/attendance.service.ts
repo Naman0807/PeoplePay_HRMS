@@ -1,13 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { pageArgs, pageResult } from '../../utils/pagination';
 import { ApiError } from '../../utils/ApiError';
 import { computeWorkedHours, classifyAttendance } from '../../utils/attendanceRules';
+import { utcDayStart } from '../../utils/dates';
 import type { ListAttendanceQuery, UpdateAttendanceInput } from './attendance.validation';
-
-function getToday(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
 
 async function findEmployeeByUserId(userId: string) {
   const employee = await prisma.employee.findUnique({ where: { user_id: userId } });
@@ -19,7 +16,7 @@ async function findEmployeeByUserId(userId: string) {
 
 export async function punchIn(userId: string) {
   const employee = await findEmployeeByUserId(userId);
-  const today = getToday();
+  const today = utcDayStart();
 
   const existing = await prisma.attendance.findUnique({
     where: { employee_id_date: { employee_id: employee.id, date: today } },
@@ -47,7 +44,7 @@ export async function punchIn(userId: string) {
 
 export async function punchOut(userId: string) {
   const employee = await findEmployeeByUserId(userId);
-  const today = getToday();
+  const today = utcDayStart();
 
   const existing = await prisma.attendance.findUnique({
     where: { employee_id_date: { employee_id: employee.id, date: today } },
@@ -90,10 +87,12 @@ export async function listOwnAttendance(userId: string, query: ListAttendanceQue
     where.status = query.status;
   }
 
-  return prisma.attendance.findMany({
-    where,
-    orderBy: { date: 'desc' },
-  });
+  const [items, total] = await Promise.all([
+    prisma.attendance.findMany({ where, orderBy: { date: 'desc' }, ...pageArgs(query) }),
+    prisma.attendance.count({ where }),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function listAllAttendance(query: ListAttendanceQuery) {
@@ -113,13 +112,17 @@ export async function listAllAttendance(query: ListAttendanceQuery) {
     where.status = query.status;
   }
 
-  return prisma.attendance.findMany({
-    where,
-    include: {
-      employee: { select: { id: true, first_name: true, last_name: true } },
-    },
-    orderBy: { date: 'desc' },
-  });
+  const [items, total] = await Promise.all([
+    prisma.attendance.findMany({
+      where,
+      include: { employee: { select: { id: true, first_name: true, last_name: true } } },
+      orderBy: { date: 'desc' },
+      ...pageArgs(query),
+    }),
+    prisma.attendance.count({ where }),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function listExceptions(query: ListAttendanceQuery) {
@@ -135,13 +138,17 @@ export async function listExceptions(query: ListAttendanceQuery) {
     if (query.to) where.date.lte = new Date(query.to);
   }
 
-  return prisma.attendance.findMany({
-    where,
-    include: {
-      employee: { select: { id: true, first_name: true, last_name: true } },
-    },
-    orderBy: { date: 'desc' },
-  });
+  const [items, total] = await Promise.all([
+    prisma.attendance.findMany({
+      where,
+      include: { employee: { select: { id: true, first_name: true, last_name: true } } },
+      orderBy: { date: 'desc' },
+      ...pageArgs(query),
+    }),
+    prisma.attendance.count({ where }),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function updateAttendance(id: string, data: UpdateAttendanceInput, editorId: string) {

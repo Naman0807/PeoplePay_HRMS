@@ -7,6 +7,10 @@ const createSchedule = { mutate: vi.fn(), isPending: false, isError: false, erro
 vi.mock('@/src/lib/api/queries', () => ({
   useSchedules: () => ({ data: [], isLoading: false }),
   useCreateSchedule: () => createSchedule,
+  useUpdateSchedule: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteSchedule: () => ({ mutate: vi.fn(), isPending: false }),
+  listOf: <T,>(d: T[] | { items: T[] } | undefined) =>
+    !d ? [] : Array.isArray(d) ? d : d.items,
 }));
 
 import SchedulesPage from '@/src/app/(dashboard)/schedules/page';

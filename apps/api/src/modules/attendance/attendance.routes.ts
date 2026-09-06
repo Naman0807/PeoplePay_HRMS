@@ -11,8 +11,8 @@ router.use(authenticate);
 
 router.post('/punch-in', controller.punchIn);
 router.post('/punch-out', controller.punchOut);
-router.get('/me', controller.listOwn);
-router.get('/exceptions', requireCapability('VIEW_ALL_ATTENDANCE'), controller.listExceptions);
+router.get('/me', validate(listAttendanceQuerySchema, 'query'), controller.listOwn);
+router.get('/exceptions', requireCapability('VIEW_ALL_ATTENDANCE'), validate(listAttendanceQuerySchema, 'query'), controller.listExceptions);
 router.get('/', requireCapability('VIEW_ALL_ATTENDANCE'), validate(listAttendanceQuerySchema, 'query'), controller.listAll);
 router.patch('/:id', requireCapability('MANUAL_ATTENDANCE_CORRECTION'), validate(updateAttendanceSchema), controller.update);
 

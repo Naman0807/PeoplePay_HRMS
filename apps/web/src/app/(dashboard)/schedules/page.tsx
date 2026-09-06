@@ -1,12 +1,20 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useSchedules, useCreateSchedule } from '@/src/lib/api/queries';
+import {
+  useSchedules,
+  useCreateSchedule,
+  useUpdateSchedule,
+  useDeleteSchedule,
+  listOf,
+} from '@/src/lib/api/queries';
 import { RequireAuth } from '@/src/components/auth/RequireAuth';
 import { PageHeader } from '@/src/components/layout/PageHeader';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { DataTable, type Column } from '@/src/components/layout/DataTable';
 import { Modal } from '@/src/components/layout/Modal';
 import { EmptyState } from '@/src/components/layout/EmptyState';
+import { ConfirmDialog } from '@/src/components/layout/ConfirmDialog';
 import type { WorkingSchedule } from '@/src/lib/api/queries';
 import { calculateWeeklyHours } from '@peoplepay360/shared';
 import type { DayOfWeek, CreateScheduleDTO, ScheduleLineInput } from '@peoplepay360/shared';
@@ -35,10 +43,24 @@ const DEFAULT_DAY: DayConfig = {
   breakMinutes: 60,
 };
 
+/** Prisma @db.Time comes back as an ISO datetime; keep only HH:MM. */
+function toHHMM(value: string): string {
+  const match = /T(\d{2}:\d{2})/.exec(value);
+  if (match) return match[1];
+  return value.slice(0, 5);
+}
+
 function SchedulesPageContent() {
   const [modalOpen, setModalOpen] = useState(false);
-  const { data: schedules, isLoading } = useSchedules();
+  const [page, setPage] = useState(1);
+  const { data: schedulesData, isLoading } = useSchedules({ page, pageSize: 20 });
+  const schedules = listOf(schedulesData);
   const createSchedule = useCreateSchedule();
+  const updateSchedule = useUpdateSchedule();
+  const deleteSchedule = useDeleteSchedule();
+  const [viewing, setViewing] = useState<WorkingSchedule | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<WorkingSchedule | null>(null);
 
   const [name, setName] = useState('');
   const [scheduleType, setScheduleType] = useState('STANDARD');
@@ -79,6 +101,31 @@ function SchedulesPageContent() {
     });
   }
 
+  function openEdit(schedule: WorkingSchedule) {
+    const next: Record<DayOfWeek, DayConfig> = {
+      MONDAY: { ...DEFAULT_DAY },
+      TUESDAY: { ...DEFAULT_DAY },
+      WEDNESDAY: { ...DEFAULT_DAY },
+      THURSDAY: { ...DEFAULT_DAY },
+      FRIDAY: { ...DEFAULT_DAY },
+      SATURDAY: { ...DEFAULT_DAY },
+      SUNDAY: { ...DEFAULT_DAY },
+    };
+    for (const line of schedule.schedule_lines ?? []) {
+      next[line.day_of_week as DayOfWeek] = {
+        isWorking: true,
+        startTime: toHHMM(line.start_time),
+        endTime: toHHMM(line.end_time),
+        breakMinutes: line.break_duration_mins,
+      };
+    }
+    setName(schedule.name);
+    setScheduleType(schedule.schedule_type);
+    setDays(next);
+    setEditingId(schedule.id);
+    setModalOpen(true);
+  }
+
   function toggleDay(day: DayOfWeek) {
     setDays((prev) => ({
       ...prev,
@@ -112,12 +159,19 @@ function SchedulesPageContent() {
       schedule_lines: scheduleLines,
     };
 
-    createSchedule.mutate(payload, {
+    const done = {
       onSuccess: () => {
         setModalOpen(false);
+        setEditingId(null);
         resetForm();
       },
-    });
+    };
+
+    if (editingId) {
+      updateSchedule.mutate({ id: editingId, data: payload }, done);
+    } else {
+      createSchedule.mutate(payload, done);
+    }
   }
 
   function getWorkingDays(schedule: WorkingSchedule) {
@@ -170,13 +224,30 @@ function SchedulesPageContent() {
     {
       key: 'actions',
       header: '',
-      render: () => (
-        <button
-          type="button"
-          className="text-sm font-medium text-slate-600 hover:text-slate-900"
-        >
-          View
-        </button>
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setViewing(row)}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => openEdit(row)}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleting(row)}
+            className="text-sm font-medium text-rose-600 hover:text-rose-700"
+          >
+            Delete
+          </button>
+        </div>
       ),
     },
   ];
@@ -221,20 +292,29 @@ function SchedulesPageContent() {
       ) : (
         <DataTable
           columns={columns}
-          data={schedules ?? []}
+          data={schedules}
           keyExtractor={(row) => row.id}
           loading={isLoading}
           emptyMessage="No schedules found"
         />
       )}
 
+      <Pagination
+        page={page}
+        totalPages={schedulesData?.meta?.totalPages ?? 1}
+        total={schedulesData?.meta?.total}
+        label="schedules"
+        onChange={setPage}
+      />
+
       <Modal
         open={modalOpen}
         onClose={() => {
           setModalOpen(false);
+          setEditingId(null);
           resetForm();
         }}
-        title="New Schedule"
+        title={editingId ? 'Edit Schedule' : 'New Schedule'}
         size="lg"
         footer={
           <>
@@ -242,9 +322,10 @@ function SchedulesPageContent() {
               type="button"
               onClick={() => {
                 setModalOpen(false);
+                setEditingId(null);
                 resetForm();
               }}
-              disabled={createSchedule.isPending}
+              disabled={createSchedule.isPending || updateSchedule.isPending}
               className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
@@ -252,10 +333,14 @@ function SchedulesPageContent() {
             <button
               type="submit"
               form="schedule-form"
-              disabled={createSchedule.isPending}
+              disabled={createSchedule.isPending || updateSchedule.isPending}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
             >
-              {createSchedule.isPending ? 'Creating...' : 'Create Schedule'}
+              {createSchedule.isPending || updateSchedule.isPending
+                ? 'Saving...'
+                : editingId
+                  ? 'Save Changes'
+                  : 'Create Schedule'}
             </button>
           </>
         }
@@ -377,6 +462,61 @@ function SchedulesPageContent() {
           )}
         </form>
       </Modal>
+
+      <Modal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title="Schedule Details"
+        size="md"
+      >
+        {viewing ? (
+          <div className="space-y-4 text-sm">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <dt className="text-slate-500">Name</dt>
+              <dd className="text-slate-900">{viewing.name}</dd>
+              <dt className="text-slate-500">Type</dt>
+              <dd className="text-slate-900">{viewing.schedule_type}</dd>
+              <dt className="text-slate-500">Weekly Hours</dt>
+              <dd className="text-slate-900">{viewing.weekly_hours}h</dd>
+            </dl>
+            <div>
+              <p className="mb-2 font-medium text-slate-700">Working Days</p>
+              {(viewing.schedule_lines ?? []).length === 0 ? (
+                <p className="text-slate-500">No working days configured.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                  {(viewing.schedule_lines ?? []).map((line) => (
+                    <li
+                      key={line.day_of_week}
+                      className="flex items-center justify-between px-3 py-2"
+                    >
+                      <span className="text-slate-700">{line.day_of_week}</span>
+                      <span className="text-slate-500">
+                        {toHHMM(line.start_time)} – {toHHMM(line.end_time)} ·{' '}
+                        {line.break_duration_mins}m break
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!deleting}
+        title="Delete schedule"
+        message={`Delete "${deleting?.name ?? ''}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        danger
+        loading={deleteSchedule.isPending}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return;
+          deleteSchedule.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
+        }}
+      />
     </div>
   );
 }

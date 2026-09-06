@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/src/lib/api/client';
 import { RequireAuth } from '@/src/components/auth/RequireAuth';
 import { PageHeader } from '@/src/components/layout/PageHeader';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { StatusBadge } from '@/src/components/layout/StatusBadge';
 import { EmptyState } from '@/src/components/layout/EmptyState';
 import { LoadingSpinner } from '@/src/components/layout/LoadingSpinner';
@@ -23,6 +24,7 @@ import {
   type Payrun,
 } from '@/src/lib/api/queries';
 import type { PaginatedResponse } from '@peoplepay360/shared';
+import type { SalaryStructure } from '@/src/lib/api/queries';
 
 const WIZARD_STEPS = [
   { step: 1, label: 'Period' },
@@ -72,13 +74,15 @@ function PayrollPageContent() {
   const [wizardError, setWizardError] = useState<string | null>(null);
   const [expandedPayrunId, setExpandedPayrunId] = useState<string | null>(null);
 
-  const { data: structures } = useSalaryStructures();
+  const { data: structuresData } = useSalaryStructures({ pageSize: 100 });
+  const structures = toItems<SalaryStructure>(structuresData);
   const {
     data: employeesData,
     isLoading: employeesLoading,
     isError: employeesError,
   } = useEmployees({ page: 1, pageSize: 100, status: 'ACTIVE' });
-  const { data: payrunsData, isLoading: payrunsLoading } = usePayruns();
+  const [payrunsPage, setPayrunsPage] = useState(1);
+  const { data: payrunsData, isLoading: payrunsLoading } = usePayruns({ page: payrunsPage, pageSize: 20 });
   const { data: currentPayrun } = usePayrun(payrunId ?? undefined);
   const { data: expandedEmployees } = usePayrunEmployees(expandedPayrunId ?? undefined);
   const { data: expandedPayslips } = usePayrunPayslips(expandedPayrunId ?? undefined);
@@ -89,7 +93,7 @@ function PayrollPageContent() {
   const markPaid = useMarkPaid();
 
   const employeeCandidates = toItems(employeesData);
-  const payruns: Payrun[] = payrunsData ?? [];
+  const payruns: Payrun[] = toItems<Payrun>(payrunsData);
 
   const allSelected =
     employeeCandidates.length > 0 && selectedEmployees.length === employeeCandidates.length;
@@ -639,6 +643,13 @@ function PayrollPageContent() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={payrunsPage}
+          totalPages={payrunsData?.meta?.totalPages ?? 1}
+          total={payrunsData?.meta?.total}
+          label="payruns"
+          onChange={setPayrunsPage}
+        />
       </div>
     );
   }

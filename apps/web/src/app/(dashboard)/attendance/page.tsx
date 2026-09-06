@@ -1,8 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useAttendance, useEmployees, useMyAttendance, usePunchIn, usePunchOut } from '@/src/lib/api/queries';
+import {
+  useAttendance,
+  useEmployees,
+  useMyAttendance,
+  usePunchIn,
+  usePunchOut,
+  useUpdateAttendance,
+} from '@/src/lib/api/queries';
+import { Modal } from '@/src/components/layout/Modal';
 import { PageHeader } from '@/src/components/layout/PageHeader';
+import { useAuthStore } from '@/src/store/authStore';
+import { can } from '@peoplepay360/shared';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { DataTable, type Column } from '@/src/components/layout/DataTable';
 import { StatusBadge } from '@/src/components/layout/StatusBadge';
 import { EmptyState } from '@/src/components/layout/EmptyState';
@@ -34,9 +45,22 @@ export default function AttendancePage() {
   const from = selectedDate;
   const to = selectedDate;
 
-  const { data: attendanceData, isLoading } = useAttendance({ from, to });
+  const [page, setPage] = useState(1);
+  const user = useAuthStore((s) => s.user);
+  const canViewAll = !!user && can(user.role, 'VIEW_ALL_ATTENDANCE');
+
+  // Employees have no access to /attendance; they read their own log from /attendance/me.
+  const allQuery = useAttendance({ from, to, page, pageSize: 20, enabled: canViewAll });
+  const ownQuery = useMyAttendance({ from, to, page, pageSize: 20, enabled: !canViewAll });
+  const { data: attendanceData, isLoading } = canViewAll ? allQuery : ownQuery;
   const { data: myTodayData } = useMyAttendance({ from: todayISO(), to: todayISO() });
-  const { data: employeesData } = useEmployees({ pageSize: 100 });
+  const { data: employeesData } = useEmployees({ pageSize: 100, enabled: canViewAll });
+  const canCorrect = !!user && can(user.role, 'MANUAL_ATTENDANCE_CORRECTION');
+  const updateAttendance = useUpdateAttendance();
+  const [editing, setEditing] = useState<AttendanceRecord | null>(null);
+  const [editCheckIn, setEditCheckIn] = useState('');
+  const [editCheckOut, setEditCheckOut] = useState('');
+
   const punchIn = usePunchIn();
   const punchOut = usePunchOut();
 
@@ -88,19 +112,51 @@ export default function AttendancePage() {
     });
   }
 
+  /** <input type="datetime-local"> wants local "YYYY-MM-DDTHH:MM". */
+  function toLocalInput(iso: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function openCorrection(record: AttendanceRecord) {
+    setEditing(record);
+    setEditCheckIn(toLocalInput(record.check_in));
+    setEditCheckOut(toLocalInput(record.check_out));
+  }
+
+  function handleCorrection() {
+    if (!editing) return;
+    const data: { check_in?: string; check_out?: string } = {};
+    if (editCheckIn) data.check_in = new Date(editCheckIn).toISOString();
+    if (editCheckOut) data.check_out = new Date(editCheckOut).toISOString();
+    if (!data.check_in && !data.check_out) return;
+
+    updateAttendance.mutate(
+      { id: editing.id, data },
+      { onSuccess: () => setEditing(null) }
+    );
+  }
+
   const columns: Column<AttendanceRecord>[] = [
-    {
-      key: 'employee',
-      header: 'Employee',
-      render: (row) =>
-        row.employee
-          ? `${row.employee.first_name} ${row.employee.last_name}`
-          : employeeMap.get(row.employee_id) ?? '—',
-    },
+    ...(canViewAll
+      ? [
+          {
+            key: 'employee',
+            header: 'Employee',
+            render: (row: AttendanceRecord) =>
+              row.employee
+                ? `${row.employee.first_name} ${row.employee.last_name}`
+                : employeeMap.get(row.employee_id) ?? '—',
+          },
+        ]
+      : []),
     {
       key: 'date',
       header: 'Date',
-      render: (row) => new Date(row.date).toLocaleDateString(),
+      // Date-only column: format in UTC so the day never shifts.
+      render: (row) => new Date(row.date).toLocaleDateString(undefined, { timeZone: 'UTC' }),
     },
     {
       key: 'check_in',
@@ -131,6 +187,23 @@ export default function AttendancePage() {
       header: 'Status',
       render: (row) => <StatusBadge status={row.status} />,
     },
+    ...(canCorrect
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            render: (row: AttendanceRecord) => (
+              <button
+                type="button"
+                onClick={() => openCorrection(row)}
+                className="text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                Edit
+              </button>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -244,6 +317,78 @@ export default function AttendancePage() {
           emptyMessage="No attendance records"
         />
       )}
+
+      <Pagination
+        page={page}
+        totalPages={attendanceData?.meta?.totalPages ?? 1}
+        total={attendanceData?.meta?.total}
+        label="records"
+        onChange={setPage}
+      />
+
+      <Modal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title="Correct Attendance"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCorrection}
+              disabled={updateAttendance.isPending || (!editCheckIn && !editCheckOut)}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+            >
+              {updateAttendance.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="edit-check-in"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
+              Punch In
+            </label>
+            <input
+              id="edit-check-in"
+              type="datetime-local"
+              value={editCheckIn}
+              onChange={(e) => setEditCheckIn(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="edit-check-out"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
+              Punch Out
+            </label>
+            <input
+              id="edit-check-out"
+              type="datetime-local"
+              value={editCheckOut}
+              onChange={(e) => setEditCheckOut(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          {updateAttendance.isError && (
+            <p className="text-sm text-rose-600">
+              {(updateAttendance.error as Error)?.message ?? 'Failed to save correction'}
+            </p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

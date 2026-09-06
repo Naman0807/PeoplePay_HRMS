@@ -6,6 +6,7 @@ import {
   useDepartments,
   useSchedules,
   useEmployees,
+  listOf,
 } from '@/src/lib/api/queries';
 
 export interface EmployeeFormValues {
@@ -69,7 +70,8 @@ export function EmployeeForm({
   const [errors, setErrors] = useState<FormErrors>({});
 
   const { data: departments } = useDepartments();
-  const { data: schedules } = useSchedules();
+  const { data: schedulesData } = useSchedules({ pageSize: 100 });
+  const schedules = listOf(schedulesData);
   const { data: managersData } = useEmployees({ page: 1, pageSize: 100 });
 
   function setField<K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) {

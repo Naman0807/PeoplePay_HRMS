@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
+
+export const listRequestsQuerySchema = z.object({
+  ...paginationFields,
+  employee_id: z.string().uuid().optional(),
+  status: z.string().optional(),
+});
+
+export type ListRequestsQuery = z.infer<typeof listRequestsQuerySchema>;
 
 const requestBaseSchema = z.object({
   employee_id: z.string().uuid(),

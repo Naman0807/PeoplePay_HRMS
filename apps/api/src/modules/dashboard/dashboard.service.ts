@@ -1,8 +1,8 @@
 import { prisma } from '../../lib/prisma';
+import { utcDayStart } from '../../utils/dates';
 
 export async function getKpis() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = utcDayStart();
 
   const [
     totalEmployees,
@@ -47,15 +47,15 @@ export async function getAttendanceChart(days = 30) {
   });
 
   const result: { date: string; present: number; absent: number; exception: number }[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = utcDayStart();
 
   for (let i = days - 1; i >= 0; i--) {
+    // UTC arithmetic: `today` is midnight UTC, matching the @db.Date column.
     const d = new Date(today);
-    d.setDate(d.getDate() - i);
+    d.setUTCDate(d.getUTCDate() - i);
 
     const nextDay = new Date(d);
-    nextDay.setDate(nextDay.getDate() + 1);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
     const grouped = await prisma.attendance.groupBy({
       by: ['status'],

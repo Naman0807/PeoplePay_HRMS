@@ -119,7 +119,8 @@ describe.skipIf(!dbReady)('/api/contracts', () => {
       .set(bearer(adminToken));
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data.items).toHaveLength(1);
+    expect(res.body.data.meta.total).toBe(1);
   });
 
   it('does not report a contract as overlapping itself on update', async () => {

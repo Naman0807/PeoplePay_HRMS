@@ -10,8 +10,12 @@ import {
   useTimeOffAllocations,
   useTimeOffRequests,
   useTimeOffTypes,
+  listOf,
 } from '@/src/lib/api/queries';
+import { useAuthStore } from '@/src/store/authStore';
+import { can } from '@peoplepay360/shared';
 import type { Column } from '@/src/components/layout/DataTable';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { DataTable } from '@/src/components/layout/DataTable';
 import { EmptyState } from '@/src/components/layout/EmptyState';
 import { LoadingSpinner } from '@/src/components/layout/LoadingSpinner';
@@ -84,8 +88,14 @@ export default function TimeOffPage() {
   const [endDate, setEndDate] = useState('');
 
   const typesQuery = useTimeOffTypes();
-  const allocationsQuery = useTimeOffAllocations();
-  const requestsQuery = useTimeOffRequests();
+  const user = useAuthStore((s) => s.user);
+  const canApprove = !!user && can(user.role, 'APPROVE_TIME_OFF');
+  const canManageTypes = !!user && can(user.role, 'MANAGE_TIME_OFF_TYPES');
+
+  const [requestsPage, setRequestsPage] = useState(1);
+  const [allocationsPage, setAllocationsPage] = useState(1);
+  const allocationsQuery = useTimeOffAllocations({ page: allocationsPage, pageSize: 20 });
+  const requestsQuery = useTimeOffRequests({ page: requestsPage, pageSize: 20 });
   const employeesQuery = useEmployees();
 
   const createRequest = useCreateTimeOffRequest();
@@ -94,9 +104,13 @@ export default function TimeOffPage() {
   const refuseRequest = useRefuseTimeOffRequest();
 
   const types = typesQuery.data ?? [];
-  const allocations = allocationsQuery.data ?? [];
-  const requests = requestsQuery.data ?? [];
-  const employees = Array.isArray(employeesQuery.data) ? employeesQuery.data : (employeesQuery.data?.items ?? []);
+  const allocations = listOf(allocationsQuery.data);
+  const requests = listOf(requestsQuery.data);
+  const employees = listOf(employeesQuery.data);
+
+  // Employees can only file for themselves; preselect their own record.
+  const ownEmployeeId = canApprove ? '' : employees[0]?.id ?? '';
+  const effectiveEmployeeId = canApprove ? employeeId : ownEmployeeId;
 
   const balances = useMemo(() => {
     const map = new Map<string, { typeId: string; typeName: string; remaining: number }>();
@@ -125,10 +139,10 @@ export default function TimeOffPage() {
     typesQuery.isError || allocationsQuery.isError || requestsQuery.isError || employeesQuery.isError;
 
   function handleCreateRequest() {
-    if (!employeeId || !typeId || !startDate || !endDate) return;
+    if (!effectiveEmployeeId || !typeId || !startDate || !endDate) return;
     createRequest.mutate(
       {
-        employee_id: employeeId,
+        employee_id: effectiveEmployeeId,
         time_off_type_id: typeId,
         start_date: startDate,
         end_date: endDate,
@@ -201,7 +215,7 @@ export default function TimeOffPage() {
               Submit
             </button>
           </div>
-        ) : row.status === 'SUBMITTED' ? (
+        ) : row.status === 'SUBMITTED' && canApprove ? (
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -321,6 +335,12 @@ export default function TimeOffPage() {
         ))}
       </div>
 
+      {!loading && balances.length === 0 && (
+        <p className="mt-3 text-sm text-slate-500">
+          No leave allocated to you yet. Ask HR to allocate leave before requesting time off.
+        </p>
+      )}
+
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Requests</h2>
@@ -334,8 +354,16 @@ export default function TimeOffPage() {
         ) : (
           <DataTable columns={requestColumns} data={requests} keyExtractor={(row) => row.id} />
         )}
+        <Pagination
+          page={requestsPage}
+          totalPages={requestsQuery.data?.meta?.totalPages ?? 1}
+          total={requestsQuery.data?.meta?.total}
+          label="requests"
+          onChange={setRequestsPage}
+        />
       </section>
 
+      {canManageTypes && (
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Types</h2>
         {loading ? (
@@ -348,7 +376,9 @@ export default function TimeOffPage() {
           <DataTable columns={typeColumns} data={types} keyExtractor={(row) => row.id} />
         )}
       </section>
+      )}
 
+      {canManageTypes && (
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Allocations</h2>
         {loading ? (
@@ -364,7 +394,15 @@ export default function TimeOffPage() {
             keyExtractor={(row) => row.id}
           />
         )}
+        <Pagination
+          page={allocationsPage}
+          totalPages={allocationsQuery.data?.meta?.totalPages ?? 1}
+          total={allocationsQuery.data?.meta?.total}
+          label="allocations"
+          onChange={setAllocationsPage}
+        />
       </section>
+      )}
 
       <Modal
         open={newRequestOpen}
@@ -382,7 +420,7 @@ export default function TimeOffPage() {
             <button
               type="button"
               onClick={handleCreateRequest}
-              disabled={!employeeId || !typeId || !startDate || !endDate || createRequest.isPending}
+              disabled={!effectiveEmployeeId || !typeId || !startDate || !endDate || createRequest.isPending}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
             >
               {createRequest.isPending ? 'Submitting...' : 'Submit Request'}
@@ -391,24 +429,26 @@ export default function TimeOffPage() {
         }
       >
         <div className="space-y-4">
-          <div>
-            <label className={labelClass} htmlFor="to-employee">
-              Employee
-            </label>
-            <select
-              id="to-employee"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Select employee</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.first_name} {emp.last_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {canApprove ? (
+            <div>
+              <label className={labelClass} htmlFor="to-employee">
+                Employee
+              </label>
+              <select
+                id="to-employee"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Select employee</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.first_name} {emp.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div>
             <label className={labelClass} htmlFor="to-type">
               Time off type

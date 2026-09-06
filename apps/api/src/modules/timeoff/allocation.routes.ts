@@ -2,14 +2,14 @@ import { Router } from 'express';
 import { authenticate } from '../../middleware/auth';
 import { requireCapability } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { createAllocationSchema, updateAllocationSchema } from './allocation.validation';
+import { createAllocationSchema, updateAllocationSchema, listAllocationsQuerySchema } from './allocation.validation';
 import * as controller from './allocation.controller';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', controller.list);
+router.get('/', validate(listAllocationsQuerySchema, 'query'), controller.list);
 router.get('/:id', controller.get);
 router.post('/', requireCapability('MANAGE_TIME_OFF_TYPES'), validate(createAllocationSchema), controller.create);
 router.patch('/:id', requireCapability('MANAGE_TIME_OFF_TYPES'), validate(updateAllocationSchema), controller.update);

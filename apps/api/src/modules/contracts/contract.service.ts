@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma';
+import { pageArgs, pageResult } from '../../utils/pagination';
 import { Prisma } from '@prisma/client';
 import { assertNoOverlap } from '../../utils/contractRules';
 import { CreateContractInput, UpdateContractInput, ListContractsQuery } from './contract.validation';
@@ -14,11 +15,17 @@ export async function listContracts(query: ListContractsQuery) {
   if (query.employeeId) where.employee_id = query.employeeId;
   if (query.status) where.status = query.status;
 
-  return prisma.contract.findMany({
-    where,
-    include: includeRelations,
-    orderBy: { start_date: 'desc' },
-  });
+  const [items, total] = await Promise.all([
+    prisma.contract.findMany({
+      where,
+      include: includeRelations,
+      orderBy: { start_date: 'desc' },
+      ...pageArgs(query),
+    }),
+    prisma.contract.count({ where }),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function getContract(id: string) {

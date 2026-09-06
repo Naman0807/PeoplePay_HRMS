@@ -1,19 +1,26 @@
 import { Prisma, $Enums } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { pageArgs, pageResult } from '../../utils/pagination';
 import { ApiError } from '../../utils/ApiError';
 import { findEligibleEmployees } from '../../utils/payrunRules';
 import { executeRules, type SalaryResult, type SalaryRuleInput } from '../../utils/salaryEngine';
 import { FormulaError } from '../../utils/formulaEvaluator';
 import { CreatePayrunInput } from './payrun.validation';
 
-export async function listPayruns() {
-  return prisma.payrun.findMany({
-    include: {
-      salary_structure: { select: { id: true, name: true, code: true } },
-      _count: { select: { payslips: true } },
-    },
-    orderBy: { created_at: 'desc' },
-  });
+export async function listPayruns(query: { page: number; pageSize: number }) {
+  const [items, total] = await Promise.all([
+    prisma.payrun.findMany({
+      include: {
+        salary_structure: { select: { id: true, name: true, code: true } },
+        _count: { select: { payslips: true } },
+      },
+      orderBy: { created_at: 'desc' },
+      ...pageArgs(query),
+    }),
+    prisma.payrun.count(),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function getPayrun(id: string) {

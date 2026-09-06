@@ -1,8 +1,9 @@
 import { prisma } from '../../lib/prisma';
+import { pageArgs, pageResult } from '../../utils/pagination';
 import { Prisma } from '@prisma/client';
 import { ApiError } from '../../utils/ApiError';
 import { calculateWeeklyHours } from '@peoplepay360/shared';
-import type { CreateScheduleInput, UpdateScheduleInput } from './schedule.validation';
+import type { CreateScheduleInput, UpdateScheduleInput, ListSchedulesQuery } from './schedule.validation';
 
 function isPrismaError(error: unknown): { code?: string } | null {
   if (typeof error === 'object' && error !== null) {
@@ -22,11 +23,17 @@ function toTimeDate(time: string): Date {
   return d;
 }
 
-export async function listSchedules() {
-  return prisma.workingSchedule.findMany({
-    include: { schedule_lines: true },
-    orderBy: { name: 'asc' },
-  });
+export async function listSchedules(query: ListSchedulesQuery) {
+  const [items, total] = await Promise.all([
+    prisma.workingSchedule.findMany({
+      include: { schedule_lines: true },
+      orderBy: { name: 'asc' },
+      ...pageArgs(query),
+    }),
+    prisma.workingSchedule.count(),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function getSchedule(id: string) {

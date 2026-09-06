@@ -5,14 +5,20 @@ import type { ComputationType, CreateSalaryRuleDTO, SalaryRuleCategory } from '@
 import {
   useCreateSalaryRule,
   useCreateSalaryStructure,
+  useUpdateSalaryStructure,
+  useDeleteSalaryStructure,
   useDeleteSalaryRule,
   useEmployees,
   useSalaryRules,
   useSalaryStructures,
   useUpdateSalaryRule,
+  listOf,
 } from '@/src/lib/api/queries';
 import type { SalaryRule, SalaryStructure } from '@/src/lib/api/queries';
 import type { Column } from '@/src/components/layout/DataTable';
+import { Pagination } from '@/src/components/layout/Pagination';
+import { useAuthStore } from '@/src/store/authStore';
+import { can } from '@peoplepay360/shared';
 import { RequireAuth } from '@/src/components/auth/RequireAuth';
 import { DataTable } from '@/src/components/layout/DataTable';
 import { EmptyState } from '@/src/components/layout/EmptyState';
@@ -149,16 +155,24 @@ function SalaryPageContent() {
   const [ruleForm, setRuleForm] = useState<RuleFormState>(EMPTY_RULE_FORM);
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
 
-  const structuresQuery = useSalaryStructures();
+  const authUser = useAuthStore((s) => s.user);
+  const canManage = !!authUser && can(authUser.role, 'MANAGE_SALARY_RULES');
+
+  const [structuresPage, setStructuresPage] = useState(1);
+  const structuresQuery = useSalaryStructures({ page: structuresPage, pageSize: 20 });
   const rulesQuery = useSalaryRules(selectedStructure?.id);
   const employeesQuery = useEmployees();
 
   const createStructure = useCreateSalaryStructure();
+  const updateStructure = useUpdateSalaryStructure();
+  const deleteStructure = useDeleteSalaryStructure();
+  const [editingStructureId, setEditingStructureId] = useState<string | null>(null);
+  const [deletingStructure, setDeletingStructure] = useState<SalaryStructure | null>(null);
   const createRule = useCreateSalaryRule(selectedStructure?.id ?? '');
   const updateRule = useUpdateSalaryRule(selectedStructure?.id ?? '');
   const deleteRule = useDeleteSalaryRule(selectedStructure?.id ?? '');
 
-  const structures = structuresQuery.data ?? [];
+  const structures = listOf(structuresQuery.data);
   const rules = rulesQuery.data ?? [];
   const employeeCount = Array.isArray(employeesQuery.data) ? employeesQuery.data.length : (employeesQuery.data?.meta.total ?? employeesQuery.data?.items.length ?? 0);
 
@@ -168,18 +182,30 @@ function SalaryPageContent() {
   const loading = structuresQuery.isLoading || employeesQuery.isLoading;
   const hasError = structuresQuery.isError || employeesQuery.isError || rulesQuery.isError;
 
+  function openEditStructure(structure: SalaryStructure) {
+    setEditingStructureId(structure.id);
+    setStructureName(structure.name);
+    setStructureCode(structure.code);
+    setNewStructureOpen(true);
+  }
+
+  function closeStructureModal() {
+    setNewStructureOpen(false);
+    setEditingStructureId(null);
+    setStructureName('');
+    setStructureCode('');
+  }
+
   function handleCreateStructure() {
     if (!structureName.trim() || !structureCode.trim()) return;
-    createStructure.mutate(
-      { name: structureName.trim(), code: structureCode.trim() },
-      {
-        onSuccess: () => {
-          setNewStructureOpen(false);
-          setStructureName('');
-          setStructureCode('');
-        },
-      }
-    );
+    const data = { name: structureName.trim(), code: structureCode.trim() };
+    const done = { onSuccess: closeStructureModal };
+
+    if (editingStructureId) {
+      updateStructure.mutate({ id: editingStructureId, data }, done);
+    } else {
+      createStructure.mutate(data, done);
+    }
   }
 
   function openNewRule() {
@@ -276,6 +302,32 @@ function SalaryPageContent() {
         </button>
       ),
     },
+    ...(canManage
+      ? [
+          {
+            key: 'manage',
+            header: '',
+            render: (row: SalaryStructure) => (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => openEditStructure(row)}
+                  className="text-xs font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingStructure(row)}
+                  className="text-xs font-medium text-rose-600 hover:text-rose-700"
+                >
+                  Delete
+                </button>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const ruleColumns: Column<SalaryRule>[] = [
@@ -293,30 +345,34 @@ function SalaryPageContent() {
     },
     { key: 'value', header: 'Value', render: (row) => ruleValue(row) },
     { key: 'sequence', header: 'Sort order', render: (row) => row.sequence },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => openEditRule(row)}
-            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
-          >
-            <PencilIcon />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => setDeleteRuleId(row.id)}
-            className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100"
-          >
-            <TrashIcon />
-            Delete
-          </button>
-        </div>
-      ),
-    },
+    ...(canManage
+      ? [
+          {
+            key: 'actions',
+            header: 'Actions',
+            render: (row: SalaryRule) => (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEditRule(row)}
+                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+                >
+                  <PencilIcon />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteRuleId(row.id)}
+                  className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100"
+                >
+                  <TrashIcon />
+                  Delete
+                </button>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -325,14 +381,16 @@ function SalaryPageContent() {
         title="Salary"
         description="Manage salary structures and their computation rules."
         actions={
-          <button
-            type="button"
-            onClick={() => setNewStructureOpen(true)}
-            className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-          >
-            <PlusIcon />
-            New Structure
-          </button>
+          canManage ? (
+            <button
+              type="button"
+              onClick={() => setNewStructureOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            >
+              <PlusIcon />
+              New Structure
+            </button>
+          ) : null
         }
       />
 
@@ -358,7 +416,16 @@ function SalaryPageContent() {
         ) : structures.length === 0 ? (
           <EmptyState icon={<GridIcon />} message="No salary structures yet. Create one to get started." />
         ) : (
-          <DataTable columns={structureColumns} data={structures} keyExtractor={(row) => row.id} />
+          <>
+            <DataTable columns={structureColumns} data={structures} keyExtractor={(row) => row.id} />
+            <Pagination
+              page={structuresPage}
+              totalPages={structuresQuery.data?.meta?.totalPages ?? 1}
+              total={structuresQuery.data?.meta?.total}
+              label="structures"
+              onChange={setStructuresPage}
+            />
+          </>
         )}
       </section>
 
@@ -369,7 +436,7 @@ function SalaryPageContent() {
               ? `Rules — ${selectedStructure.name}`
               : 'Rules'}
           </h2>
-          {selectedStructure ? (
+          {selectedStructure && canManage ? (
             <button
               type="button"
               onClick={openNewRule}
@@ -396,13 +463,13 @@ function SalaryPageContent() {
 
       <Modal
         open={newStructureOpen}
-        onClose={() => setNewStructureOpen(false)}
-        title="New Salary Structure"
+        onClose={closeStructureModal}
+        title={editingStructureId ? 'Edit Salary Structure' : 'New Salary Structure'}
         footer={
           <>
             <button
               type="button"
-              onClick={() => setNewStructureOpen(false)}
+              onClick={closeStructureModal}
               className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               Cancel
@@ -410,10 +477,19 @@ function SalaryPageContent() {
             <button
               type="button"
               onClick={handleCreateStructure}
-              disabled={!structureName.trim() || !structureCode.trim() || createStructure.isPending}
+              disabled={
+                !structureName.trim() ||
+                !structureCode.trim() ||
+                createStructure.isPending ||
+                updateStructure.isPending
+              }
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
             >
-              {createStructure.isPending ? 'Creating...' : 'Create Structure'}
+              {createStructure.isPending || updateStructure.isPending
+                ? 'Saving...'
+                : editingStructureId
+                  ? 'Save Changes'
+                  : 'Create Structure'}
             </button>
           </>
         }
@@ -609,6 +685,26 @@ function SalaryPageContent() {
         loading={deleteRule.isPending}
         onConfirm={handleDeleteRule}
         onCancel={() => setDeleteRuleId(null)}
+      />
+
+      <ConfirmDialog
+        open={!!deletingStructure}
+        title="Delete salary structure?"
+        message={`Delete "${deletingStructure?.name ?? ''}" and its rules? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        loading={deleteStructure.isPending}
+        onConfirm={() => {
+          if (!deletingStructure) return;
+          deleteStructure.mutate(deletingStructure.id, {
+            onSuccess: () => {
+              if (selectedStructure?.id === deletingStructure.id) setSelectedStructure(null);
+              setDeletingStructure(null);
+            },
+          });
+        }}
+        onCancel={() => setDeletingStructure(null)}
       />
     </div>
   );

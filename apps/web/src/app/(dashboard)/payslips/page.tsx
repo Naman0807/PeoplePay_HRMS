@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { RequireAuth } from '@/src/components/auth/RequireAuth';
 import { PageHeader } from '@/src/components/layout/PageHeader';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { DataTable, type Column } from '@/src/components/layout/DataTable';
 import { StatusBadge } from '@/src/components/layout/StatusBadge';
 import { Modal } from '@/src/components/layout/Modal';
@@ -138,31 +139,13 @@ function PayslipsPageContent() {
         />
       )}
 
-      {!isLoading && !isError && payslips.length > 0 && totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            Page {page} of {totalPages} · {meta?.total} payslips
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+            <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={meta?.total}
+        label="payslips"
+        onChange={setPage}
+      />
 
       <Modal
         open={selectedId !== null}

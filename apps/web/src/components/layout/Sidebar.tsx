@@ -160,7 +160,7 @@ export function Sidebar() {
 
   if (!sidebarOpen) {
     return (
-      <aside className="flex w-16 flex-col border-r border-slate-200 bg-white">
+      <aside className="sticky top-0 self-start flex h-screen w-16 shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex h-14 items-center justify-center border-b border-slate-200">
           <button
             type="button"
@@ -195,7 +195,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex w-60 flex-col border-r border-slate-200 bg-white">
+    <aside className="sticky top-0 self-start flex h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
         <Link href="/dashboard" className="text-lg font-bold text-slate-900">
           PeoplePay360

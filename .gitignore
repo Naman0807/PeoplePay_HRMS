@@ -24,3 +24,4 @@ prisma/*.db
 npm-debug.log*
 .vscode/
 .idea/
+*.tsbuildinfo

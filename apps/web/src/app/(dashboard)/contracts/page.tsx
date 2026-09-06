@@ -3,18 +3,22 @@
 import { useState } from 'react';
 import {
   useContracts,
+  useUpdateContract,
+  useDeleteContract,
   useCreateContract,
   useEmployees,
   useSalaryStructures,
   useSchedules,
 } from '@/src/lib/api/queries';
 import { RequireAuth } from '@/src/components/auth/RequireAuth';
+import { ConfirmDialog } from '@/src/components/layout/ConfirmDialog';
 import { PageHeader } from '@/src/components/layout/PageHeader';
+import { Pagination } from '@/src/components/layout/Pagination';
 import { DataTable, type Column } from '@/src/components/layout/DataTable';
 import { StatusBadge } from '@/src/components/layout/StatusBadge';
 import { Modal } from '@/src/components/layout/Modal';
 import { EmptyState } from '@/src/components/layout/EmptyState';
-import type { Contract, Employee } from '@/src/lib/api/queries';
+import type { Contract, Employee, SalaryStructure, WorkingSchedule } from '@/src/lib/api/queries';
 import type { CreateContractDTO, PaginatedResponse } from '@peoplepay360/shared';
 
 function toItems<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
@@ -24,13 +28,21 @@ function toItems<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
 
 function ContractsPageContent() {
   const [modalOpen, setModalOpen] = useState(false);
-  const { data: contractsData, isLoading } = useContracts();
+  const [page, setPage] = useState(1);
+  const { data: contractsData, isLoading } = useContracts({ page, pageSize: 20 });
   const { data: employeesData } = useEmployees({ pageSize: 100, status: 'ACTIVE' });
-  const { data: structures } = useSalaryStructures();
-  const { data: schedules } = useSchedules();
+  const { data: structuresData } = useSalaryStructures({ pageSize: 100 });
+  const { data: schedulesData } = useSchedules({ pageSize: 100 });
   const createContract = useCreateContract();
+  const updateContract = useUpdateContract();
+  const deleteContract = useDeleteContract();
+  const [viewing, setViewing] = useState<Contract | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Contract | null>(null);
 
   const contracts = toItems<Contract>(contractsData);
+  const structures = toItems<SalaryStructure>(structuresData);
+  const schedules = toItems<WorkingSchedule>(schedulesData);
   const employees = toItems<Employee>(employeesData);
 
   const employeeMap = new Map(employees.map((e) => [e.id, `${e.first_name} ${e.last_name}`]));
@@ -59,28 +71,49 @@ function ContractsPageContent() {
     });
   }
 
+  function openEdit(contract: Contract) {
+    setEditingId(contract.id);
+    setForm({
+      employee_id: contract.employee_id,
+      name: contract.name,
+      start_date: contract.start_date.slice(0, 10),
+      end_date: contract.end_date ? contract.end_date.slice(0, 10) : '',
+      wage: String(contract.wage),
+      salary_structure_id: contract.salary_structure_id,
+      working_schedule_id: contract.working_schedule_id,
+      status: contract.status as CreateContractDTO['status'],
+    });
+    setModalOpen(true);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.employee_id || !form.name || !form.start_date || !form.wage || !form.salary_structure_id || !form.working_schedule_id) return;
 
-    createContract.mutate(
-      {
-        employee_id: form.employee_id,
-        name: form.name,
-        start_date: form.start_date,
-        end_date: form.end_date || undefined,
-        wage: Number(form.wage),
-        salary_structure_id: form.salary_structure_id,
-        working_schedule_id: form.working_schedule_id,
-        status: form.status,
+    const payload = {
+      employee_id: form.employee_id,
+      name: form.name,
+      start_date: form.start_date,
+      end_date: form.end_date || undefined,
+      wage: Number(form.wage),
+      salary_structure_id: form.salary_structure_id,
+      working_schedule_id: form.working_schedule_id,
+      status: form.status,
+    };
+
+    const done = {
+      onSuccess: () => {
+        setModalOpen(false);
+        setEditingId(null);
+        resetForm();
       },
-      {
-        onSuccess: () => {
-          setModalOpen(false);
-          resetForm();
-        },
-      }
-    );
+    };
+
+    if (editingId) {
+      updateContract.mutate({ id: editingId, data: payload }, done);
+    } else {
+      createContract.mutate(payload, done);
+    }
   }
 
   const columns: Column<Contract>[] = [
@@ -120,13 +153,30 @@ function ContractsPageContent() {
     {
       key: 'actions',
       header: '',
-      render: () => (
-        <button
-          type="button"
-          className="text-sm font-medium text-slate-600 hover:text-slate-900"
-        >
-          View
-        </button>
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setViewing(row)}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => openEdit(row)}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleting(row)}
+            className="text-sm font-medium text-rose-600 hover:text-rose-700"
+          >
+            Delete
+          </button>
+        </div>
       ),
     },
   ];
@@ -178,13 +228,22 @@ function ContractsPageContent() {
         />
       )}
 
+      <Pagination
+        page={page}
+        totalPages={contractsData?.meta?.totalPages ?? 1}
+        total={contractsData?.meta?.total}
+        label="contracts"
+        onChange={setPage}
+      />
+
       <Modal
         open={modalOpen}
         onClose={() => {
           setModalOpen(false);
+          setEditingId(null);
           resetForm();
         }}
-        title="New Contract"
+        title={editingId ? 'Edit Contract' : 'New Contract'}
         size="lg"
         footer={
           <>
@@ -192,9 +251,10 @@ function ContractsPageContent() {
               type="button"
               onClick={() => {
                 setModalOpen(false);
+                setEditingId(null);
                 resetForm();
               }}
-              disabled={createContract.isPending}
+              disabled={createContract.isPending || updateContract.isPending}
               className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
@@ -202,7 +262,7 @@ function ContractsPageContent() {
             <button
               type="submit"
               form="contract-form"
-              disabled={createContract.isPending}
+              disabled={createContract.isPending || updateContract.isPending}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
             >
               {createContract.isPending ? 'Creating...' : 'Create Contract'}
@@ -322,7 +382,7 @@ function ContractsPageContent() {
                 required
               >
                 <option value="">Select structure</option>
-                {(structures ?? []).map((s) => (
+                {structures.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({s.code})
                   </option>
@@ -342,7 +402,7 @@ function ContractsPageContent() {
                 required
               >
                 <option value="">Select schedule</option>
-                {(schedules ?? []).map((s) => (
+                {schedules.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -351,13 +411,66 @@ function ContractsPageContent() {
             </div>
           </div>
 
-          {createContract.isError && (
+          {(createContract.isError || updateContract.isError) && (
             <p className="text-sm text-rose-600">
-              {(createContract.error as Error)?.message ?? 'Failed to create contract'}
+              {((createContract.error ?? updateContract.error) as Error)?.message ??
+                'Failed to save contract'}
             </p>
           )}
         </form>
       </Modal>
+
+      <Modal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title="Contract Details"
+        size="md"
+      >
+        {viewing ? (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <dt className="text-slate-500">Employee</dt>
+            <dd className="text-slate-900">
+              {viewing.employee
+                ? `${viewing.employee.first_name} ${viewing.employee.last_name}`
+                : employeeMap.get(viewing.employee_id) ?? '—'}
+            </dd>
+            <dt className="text-slate-500">Contract</dt>
+            <dd className="text-slate-900">{viewing.name}</dd>
+            <dt className="text-slate-500">Status</dt>
+            <dd><StatusBadge status={viewing.status} /></dd>
+            <dt className="text-slate-500">Start Date</dt>
+            <dd className="text-slate-900">{new Date(viewing.start_date).toLocaleDateString()}</dd>
+            <dt className="text-slate-500">End Date</dt>
+            <dd className="text-slate-900">
+              {viewing.end_date ? new Date(viewing.end_date).toLocaleDateString() : '—'}
+            </dd>
+            <dt className="text-slate-500">Wage</dt>
+            <dd className="text-slate-900">${Number(viewing.wage).toLocaleString()}</dd>
+            <dt className="text-slate-500">Salary Structure</dt>
+            <dd className="text-slate-900">
+              {structures.find((x) => x.id === viewing.salary_structure_id)?.name ?? '—'}
+            </dd>
+            <dt className="text-slate-500">Working Schedule</dt>
+            <dd className="text-slate-900">
+              {schedules.find((x) => x.id === viewing.working_schedule_id)?.name ?? '—'}
+            </dd>
+          </dl>
+        ) : null}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!deleting}
+        title="Delete contract"
+        message={`Delete "${deleting?.name ?? ''}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        danger
+        loading={deleteContract.isPending}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return;
+          deleteContract.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
+        }}
+      />
     </div>
   );
 }

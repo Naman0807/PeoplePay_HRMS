@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
 
 export const scheduleLineSchema = z.object({
   day_of_week: z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
@@ -15,5 +16,10 @@ export const createScheduleSchema = z.object({
 
 export const updateScheduleSchema = createScheduleSchema.partial();
 
+export const listSchedulesQuerySchema = z.object({
+  ...paginationFields,
+});
+
 export type CreateScheduleInput = z.infer<typeof createScheduleSchema>;
 export type UpdateScheduleInput = z.infer<typeof updateScheduleSchema>;
+export type ListSchedulesQuery = z.infer<typeof listSchedulesQuerySchema>;

@@ -2,9 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import * as structureService from './structure.service';
 import { ok, created } from '../../utils/apiResponse';
 
-export async function list(_req: Request, res: Response, next: NextFunction) {
+export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const structures = await structureService.listStructures();
+    const structures = await structureService.listStructures(req.query as any);
     res.json(ok(structures));
   } catch (err) {
     next(err);

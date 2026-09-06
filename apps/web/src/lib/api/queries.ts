@@ -303,6 +303,14 @@ export type EmployeeListParams = {
   status?: 'ACTIVE' | 'INACTIVE';
 };
 
+export type PageParams = { page?: number; pageSize?: number };
+
+/** Unwrap a paginated envelope (or a plain array) to a plain list. */
+export function listOf<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
+  if (!data) return [];
+  return Array.isArray(data) ? data : data.items;
+}
+
 function toQueryString(params?: Record<string, unknown>) {
   if (!params) return '';
   const qs = Object.entries(params)
@@ -318,10 +326,12 @@ function toQueryString(params?: Record<string, unknown>) {
   return qs ? `?${qs}` : '';
 }
 
-export function useEmployees(params?: EmployeeListParams) {
+export function useEmployees(params?: EmployeeListParams & { enabled?: boolean }) {
+  const { enabled = true, ...query } = params ?? {};
   return useQuery<PaginatedResponse<Employee>>({
-    queryKey: ['employees', params],
-    queryFn: () => apiFetch<PaginatedResponse<Employee>>(`/employees${toQueryString(params)}`),
+    queryKey: ['employees', query],
+    queryFn: () => apiFetch<PaginatedResponse<Employee>>(`/employees${toQueryString(query)}`),
+    enabled,
   });
 }
 
@@ -364,6 +374,23 @@ export function useUpdateEmployee() {
 
 // ─── Departments ─────────────────────────────────────────────────────────────
 
+export function useDirectory(params?: { search?: string; departmentId?: string }) {
+  return useQuery<Employee[]>({
+    queryKey: ['employees', 'directory', params],
+    queryFn: () => apiFetch<Employee[]>(`/employees/directory${toQueryString(params)}`),
+  });
+}
+
+export function useDeleteEmployee() {
+  const queryClient = useQueryClient();
+  return useMutation<{ message: string }, unknown, string>({
+    mutationFn: (id) => apiFetch<{ message: string }>(`/employees/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
+  });
+}
+
 export function useDepartments() {
   return useQuery<Department[]>({
     queryKey: ['departments'],
@@ -398,12 +425,34 @@ export function useCreateContract() {
   });
 }
 
+export function useUpdateContract() {
+  const queryClient = useQueryClient();
+  return useMutation<Contract, unknown, { id: string; data: Partial<CreateContractDTO> }>({
+    mutationFn: ({ id, data }) =>
+      apiFetch<Contract>(`/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    },
+  });
+}
+
+export function useDeleteContract() {
+  const queryClient = useQueryClient();
+  return useMutation<{ message: string }, unknown, string>({
+    mutationFn: (id) => apiFetch<{ message: string }>(`/contracts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    },
+  });
+}
+
 // ─── Schedules ───────────────────────────────────────────────────────────────
 
-export function useSchedules() {
-  return useQuery<WorkingSchedule[]>({
-    queryKey: ['schedules'],
-    queryFn: () => apiFetch<WorkingSchedule[]>('/schedules'),
+export function useSchedules(params?: PageParams) {
+  return useQuery<PaginatedResponse<WorkingSchedule>>({
+    queryKey: ['schedules', params],
+    queryFn: () =>
+      apiFetch<PaginatedResponse<WorkingSchedule>>(`/schedules${toQueryString(params)}`),
   });
 }
 
@@ -418,26 +467,58 @@ export function useCreateSchedule() {
   });
 }
 
+export function useUpdateSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation<WorkingSchedule, unknown, { id: string; data: Partial<CreateScheduleDTO> }>({
+    mutationFn: ({ id, data }) =>
+      apiFetch<WorkingSchedule>(`/schedules/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    },
+  });
+}
+
+export function useDeleteSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation<{ message: string }, unknown, string>({
+    mutationFn: (id) => apiFetch<{ message: string }>(`/schedules/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    },
+  });
+}
+
 // ─── Attendance ──────────────────────────────────────────────────────────────
 
-export type AttendanceParams = {
+export type AttendanceParams = PageParams & {
   from?: string;
   to?: string;
   status?: 'NORMAL' | 'EXCEPTION' | 'MANUALLY_EDITED';
   employeeId?: string;
 };
 
-export function useAttendance(params?: AttendanceParams) {
-  return useQuery<AttendanceRecord[]>({
-    queryKey: ['attendance', params],
-    queryFn: () => apiFetch<AttendanceRecord[]>(`/attendance${toQueryString(params)}`),
+export function useAttendance(params?: AttendanceParams & { enabled?: boolean }) {
+  const { enabled = true, ...query } = params ?? {};
+  return useQuery<PaginatedResponse<AttendanceRecord>>({
+    queryKey: ['attendance', query],
+    queryFn: () =>
+      apiFetch<PaginatedResponse<AttendanceRecord>>(`/attendance${toQueryString(query)}`),
+    enabled,
   });
 }
 
-export function useMyAttendance(params?: Omit<AttendanceParams, 'employeeId'>) {
-  return useQuery<AttendanceRecord[]>({
-    queryKey: ['attendance', 'me', params],
-    queryFn: () => apiFetch<AttendanceRecord[]>(`/attendance/me${toQueryString(params)}`),
+export function useMyAttendance(
+  params?: Omit<AttendanceParams, 'employeeId'> & { enabled?: boolean }
+) {
+  const { enabled = true, ...query } = params ?? {};
+  return useQuery<PaginatedResponse<AttendanceRecord>>({
+    queryKey: ['attendance', 'me', query],
+    queryFn: () =>
+      apiFetch<PaginatedResponse<AttendanceRecord>>(`/attendance/me${toQueryString(query)}`),
+    enabled,
   });
 }
 
@@ -461,6 +542,24 @@ export function usePunchOut() {
   });
 }
 
+export function useUpdateAttendance() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    AttendanceRecord,
+    unknown,
+    { id: string; data: { check_in?: string; check_out?: string } }
+  >({
+    mutationFn: ({ id, data }) =>
+      apiFetch<AttendanceRecord>(`/attendance/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+    },
+  });
+}
+
 // ─── Time Off ────────────────────────────────────────────────────────────────
 
 export function useTimeOffTypes() {
@@ -470,10 +569,13 @@ export function useTimeOffTypes() {
   });
 }
 
-export function useTimeOffRequests(params?: { employeeId?: string; status?: string }) {
-  return useQuery<TimeOffRequest[]>({
+export function useTimeOffRequests(
+  params?: PageParams & { employee_id?: string; status?: string }
+) {
+  return useQuery<PaginatedResponse<TimeOffRequest>>({
     queryKey: ['time-off', 'requests', params],
-    queryFn: () => apiFetch<TimeOffRequest[]>(`/time-off/requests${toQueryString(params)}`),
+    queryFn: () =>
+      apiFetch<PaginatedResponse<TimeOffRequest>>(`/time-off/requests${toQueryString(params)}`),
   });
 }
 
@@ -499,10 +601,13 @@ export function useSubmitTimeOffRequest() {
   });
 }
 
-export function useTimeOffAllocations(params?: { employeeId?: string }) {
-  return useQuery<TimeOffAllocation[]>({
+export function useTimeOffAllocations(params?: PageParams & { employee_id?: string }) {
+  return useQuery<PaginatedResponse<TimeOffAllocation>>({
     queryKey: ['time-off', 'allocations', params],
-    queryFn: () => apiFetch<TimeOffAllocation[]>(`/time-off/allocations${toQueryString(params)}`),
+    queryFn: () =>
+      apiFetch<PaginatedResponse<TimeOffAllocation>>(
+        `/time-off/allocations${toQueryString(params)}`
+      ),
   });
 }
 
@@ -530,10 +635,11 @@ export function useRefuseTimeOffRequest() {
 
 // ─── Salary ──────────────────────────────────────────────────────────────────
 
-export function useSalaryStructures() {
-  return useQuery<SalaryStructure[]>({
-    queryKey: ['salary', 'structures'],
-    queryFn: () => apiFetch<SalaryStructure[]>('/salary/structures'),
+export function useSalaryStructures(params?: PageParams) {
+  return useQuery<PaginatedResponse<SalaryStructure>>({
+    queryKey: ['salary', 'structures', params],
+    queryFn: () =>
+      apiFetch<PaginatedResponse<SalaryStructure>>(`/salary/structures${toQueryString(params)}`),
   });
 }
 
@@ -552,6 +658,35 @@ export function useCreateSalaryStructure() {
       apiFetch<SalaryStructure>('/salary/structures', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salary', 'structures'] });
+    },
+  });
+}
+
+export function useUpdateSalaryStructure() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    SalaryStructure,
+    unknown,
+    { id: string; data: Partial<CreateSalaryStructureDTO> }
+  >({
+    mutationFn: ({ id, data }) =>
+      apiFetch<SalaryStructure>(`/salary/structures/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['salary', 'structures'] });
+    },
+  });
+}
+
+export function useDeleteSalaryStructure() {
+  const queryClient = useQueryClient();
+  return useMutation<{ message: string }, unknown, string>({
+    mutationFn: (id) =>
+      apiFetch<{ message: string }>(`/salary/structures/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['salary'] });
     },
   });
 }
@@ -593,10 +728,10 @@ export function useDeleteSalaryRule(structureId: string) {
 
 // ─── Payruns ─────────────────────────────────────────────────────────────────
 
-export function usePayruns() {
-  return useQuery<Payrun[]>({
-    queryKey: ['payruns'],
-    queryFn: () => apiFetch<Payrun[]>('/payruns'),
+export function usePayruns(params?: PageParams) {
+  return useQuery<PaginatedResponse<Payrun>>({
+    queryKey: ['payruns', params],
+    queryFn: () => apiFetch<PaginatedResponse<Payrun>>(`/payruns${toQueryString(params)}`),
   });
 }
 

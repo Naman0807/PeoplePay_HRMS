@@ -2,9 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import * as payrunService from './payrun.service';
 import { ok, created } from '../../utils/apiResponse';
 
-export async function list(_req: Request, res: Response, next: NextFunction) {
+export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const payruns = await payrunService.listPayruns();
+    const payruns = await payrunService.listPayruns(req.query as any);
     res.json(ok(payruns));
   } catch (err) {
     next(err);

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { pageArgs, pageResult } from '../../utils/pagination';
 import { ApiError } from '../../utils/ApiError';
 import { assertBalanceAvailable, calculateDuration } from '../../utils/timeOffRules';
 import type { UserRole } from '@peoplepay360/shared';
@@ -32,21 +33,31 @@ async function findRequestOrThrow(id: string) {
   return request;
 }
 
-export async function listRequests(userId: string, userRole: UserRole, employeeId?: string) {
+export async function listRequests(
+  userId: string,
+  userRole: UserRole,
+  query: { page: number; pageSize: number; employee_id?: string }
+) {
   const where: Prisma.TimeOffRequestWhereInput = {};
 
   if (userRole === 'EMPLOYEE') {
     const employee = await findEmployeeByUserId(userId);
     where.employee_id = employee.id;
-  } else if (employeeId) {
-    where.employee_id = employeeId;
+  } else if (query.employee_id) {
+    where.employee_id = query.employee_id;
   }
 
-  return prisma.timeOffRequest.findMany({
-    where,
-    include: REQUEST_INCLUDE,
-    orderBy: { created_at: 'desc' },
-  });
+  const [items, total] = await Promise.all([
+    prisma.timeOffRequest.findMany({
+      where,
+      include: REQUEST_INCLUDE,
+      orderBy: { created_at: 'desc' },
+      ...pageArgs(query),
+    }),
+    prisma.timeOffRequest.count({ where }),
+  ]);
+
+  return pageResult(items, total, query);
 }
 
 export async function getRequest(id: string) {

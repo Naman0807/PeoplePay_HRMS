@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
+
+export const listPayrunsQuerySchema = z.object({ ...paginationFields });
+export type ListPayrunsQuery = z.infer<typeof listPayrunsQuerySchema>;
 
 export const createPayrunSchema = z.object({
   name: z.string().min(1).max(100),

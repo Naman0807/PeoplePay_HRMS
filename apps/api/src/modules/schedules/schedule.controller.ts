@@ -2,9 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import * as scheduleService from './schedule.service';
 import { ok, created } from '../../utils/apiResponse';
 
-export async function list(_req: Request, res: Response, next: NextFunction) {
+export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const schedules = await scheduleService.listSchedules();
+    const schedules = await scheduleService.listSchedules(req.query as any);
     res.json(ok(schedules));
   } catch (err) {
     next(err);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
 
 export const createContractSchema = z.object({
   employee_id: z.string().uuid(),
@@ -17,6 +18,7 @@ export const createContractSchema = z.object({
 export const updateContractSchema = createContractSchema.innerType().partial();
 
 export const listContractsQuerySchema = z.object({
+  ...paginationFields,
   employeeId: z.string().uuid().optional(),
   status: z.enum(['DRAFT', 'RUNNING', 'EXPIRED', 'CANCELLED']).optional(),
 });

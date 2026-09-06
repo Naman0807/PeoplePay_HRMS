@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { pageArgs, pageResult } from '../../utils/pagination';
 import { ApiError } from '../../utils/ApiError';
 import { can, type UserRole } from '@peoplepay360/shared';
 import type { CreateAllocationInput, UpdateAllocationInput } from './allocation.validation';
@@ -22,21 +23,30 @@ function addRemaining<T extends { allocated_units: any; taken_units: any }>(reco
   return { ...record, remaining_units: remaining };
 }
 
-export async function listAllocations(userId: string, userRole: UserRole, employeeId?: string) {
+export async function listAllocations(
+  userId: string,
+  userRole: UserRole,
+  query: { page: number; pageSize: number; employee_id?: string }
+) {
   const where: Prisma.TimeOffAllocationWhereInput = {};
 
   if (can(userRole, 'MANAGE_TIME_OFF_TYPES')) {
-    if (employeeId) where.employee_id = employeeId;
+    if (query.employee_id) where.employee_id = query.employee_id;
   } else {
     where.employee_id = await resolveEmployeeIdForUser(userId);
   }
 
-  const allocations = await prisma.timeOffAllocation.findMany({
-    where,
-    include: ALLOCATION_INCLUDE,
-    orderBy: { created_at: 'desc' },
-  });
-  return allocations.map(addRemaining);
+  const [allocations, total] = await Promise.all([
+    prisma.timeOffAllocation.findMany({
+      where,
+      include: ALLOCATION_INCLUDE,
+      orderBy: { created_at: 'desc' },
+      ...pageArgs(query),
+    }),
+    prisma.timeOffAllocation.count({ where }),
+  ]);
+
+  return pageResult(allocations.map(addRemaining), total, query);
 }
 
 export async function getAllocation(id: string, userId: string, userRole: UserRole) {

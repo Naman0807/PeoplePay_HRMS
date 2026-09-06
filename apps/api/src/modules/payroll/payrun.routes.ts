@@ -2,14 +2,14 @@ import { Router } from 'express';
 import { authenticate } from '../../middleware/auth';
 import { requireCapability } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { createPayrunSchema, selectEmployeesSchema } from './payrun.validation';
+import { createPayrunSchema, selectEmployeesSchema, listPayrunsQuerySchema } from './payrun.validation';
 import * as controller from './payrun.controller';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', requireCapability('VIEW_PAYRUNS'), controller.list);
+router.get('/', requireCapability('VIEW_PAYRUNS'), validate(listPayrunsQuerySchema, 'query'), controller.list);
 router.get('/:id', requireCapability('VIEW_PAYRUNS'), controller.get);
 router.post('/', requireCapability('PROCESS_PAYRUNS'), validate(createPayrunSchema), controller.create);
 router.get('/:id/eligible-employees', requireCapability('PROCESS_PAYRUNS'), controller.getEligibleEmployees);

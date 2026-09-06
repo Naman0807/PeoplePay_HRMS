@@ -50,9 +50,12 @@ vi.mock('@/src/lib/api/queries', () => ({
   useSubmitTimeOffRequest: () => submitRequest,
   useApproveTimeOffRequest: () => approveRequest,
   useRefuseTimeOffRequest: () => refuseRequest,
+  listOf: <T,>(d: T[] | { items: T[] } | undefined) =>
+    !d ? [] : Array.isArray(d) ? d : d.items,
 }));
 
 import TimeOffPage from '@/src/app/(dashboard)/time-off/page';
+import { useAuthStore } from '@/src/store/authStore';
 
 async function openRequestForm() {
   const user = userEvent.setup();
@@ -67,6 +70,12 @@ function submitButton() {
 
 describe('time off request form', () => {
   beforeEach(() => {
+    // The employee picker and approve/reject actions are gated on APPROVE_TIME_OFF.
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'hr@peoplepay360.com', role: 'HR_MANAGER' },
+      accessToken: 'token',
+      isAuthenticated: true,
+    });
     createRequest.mutate.mockClear();
   });
 

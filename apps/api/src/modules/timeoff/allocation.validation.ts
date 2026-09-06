@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import { paginationFields } from '../../utils/pagination';
+
+export const listAllocationsQuerySchema = z.object({
+  ...paginationFields,
+  employee_id: z.string().uuid().optional(),
+});
+
+export type ListAllocationsQuery = z.infer<typeof listAllocationsQuerySchema>;
 
 const allocationBaseSchema = z.object({
   employee_id: z.string().uuid(),

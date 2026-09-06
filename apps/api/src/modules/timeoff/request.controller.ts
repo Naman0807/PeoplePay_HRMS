@@ -4,8 +4,7 @@ import { ok, created } from '../../utils/apiResponse';
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const employeeId = req.query.employee_id as string | undefined;
-    const requests = await requestService.listRequests(req.user!.id, req.user!.role, employeeId);
+    const requests = await requestService.listRequests(req.user!.id, req.user!.role, req.query as any);
     res.json(ok(requests));
   } catch (err) {
     next(err);
