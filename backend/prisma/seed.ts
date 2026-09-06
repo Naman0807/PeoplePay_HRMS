@@ -38,6 +38,17 @@ async function main() {
     create: { id: 1, name: "Standard 40h / 5 days", hours_per_week: 40, days_per_week: 5, timezone: "Asia/Kolkata" },
   });
 
+  // The calendar's day-by-day breakdown (Screen E / Working Schedule) — without this
+  // a fresh seed leaves the weekly builder table empty, since resource_calendars
+  // itself carries no per-day data. Standard 9-6 with a 1h break, Mon-Fri.
+  for (const day of ["MON", "TUE", "WED", "THU", "FRI"] as const) {
+    await prisma.resourceCalendarDay.upsert({
+      where: { resource_calendar_id_day: { resource_calendar_id: calendar.id, day } },
+      update: {},
+      create: { resource_calendar_id: calendar.id, day, start_time: "09:00", end_time: "18:00", break_minutes: 60 },
+    });
+  }
+
   const structure = await prisma.payrollStructure.upsert({
     where: { id: 1 },
     update: {},
