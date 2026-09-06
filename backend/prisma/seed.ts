@@ -1,8 +1,18 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient, Role } from "@prisma/client";
+import { Prisma, PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+// Same formula as workedHours() in src/routes/attendances.ts — worked_hours is
+// computed in application code (not a DB generated column, per the design spec),
+// so seeding via prisma.attendance.create directly has to set it the same way the
+// real POST handler does, or every seeded row ends up with worked_hours: null.
+function workedHours(check_in: Date, check_out: Date | null) {
+  if (!check_out) return null;
+  const hours = (check_out.getTime() - check_in.getTime()) / 3_600_000;
+  return new Prisma.Decimal(hours).toDecimalPlaces(2);
+}
 
 // Every seeded account uses this password. Local demo data only — never a real credential.
 const DEMO_PASSWORD = "password123";
@@ -163,6 +173,95 @@ async function main() {
           state: "APPROVED",
         },
       });
+    }
+  }
+
+  // Attendance: the last full Mon-Fri work week before whenever the seed actually
+  // runs, so it's always genuinely in the past (every row has a check_out) no matter
+  // when this script is executed — not hardcoded dates that go stale.
+  const today = new Date();
+  const daysSinceMonday = (today.getUTCDay() + 6) % 7;
+  const thisMonday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - daysSinceMonday));
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
+
+  for (const employee of employees) {
+    const existing = await prisma.attendance.findFirst({ where: { employee_id: employee.id } });
+    if (existing) continue;
+
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(lastMonday);
+      date.setUTCDate(lastMonday.getUTCDate() + i);
+      // Rohit calls in sick one day that week — no check_out, so it reads as absent
+      // rather than a present day with a suspiciously short shift.
+      const absent = employee.work_email === EMPLOYEES[1].work_email && i === 2;
+
+      const check_in = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 9, 0));
+      const check_out = absent ? null : new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 18, 0));
+
+      await prisma.attendance.create({
+        data: {
+          employee_id: employee.id,
+          check_in,
+          check_out,
+          worked_hours: workedHours(check_in, check_out),
+          status: absent ? "ABSENT" : "PRESENT",
+          notes: absent ? "Called in sick." : null,
+        },
+      });
+    }
+  }
+
+  // Leave requests: one demo state per outcome (approved/pending/refused), so the
+  // Time Off screen and dashboard's pending_leave_requests KPI both have something
+  // real to show without needing to click through the app first. Approved requests
+  // deduct from the matching allocation seeded above, same as the real approve
+  // endpoint would — seeding directly bypasses that endpoint, so it's done by hand
+  // here to keep balances consistent with the request states.
+  const LEAVE_REQUESTS: {
+    employeeIndex: number;
+    leave_type_id: number;
+    date_from: string;
+    date_to: string;
+    number_of_days: number;
+    state: "APPROVED" | "TO_APPROVE" | "REFUSED";
+    reason?: string;
+  }[] = [
+    { employeeIndex: 1, leave_type_id: 1, date_from: "2026-09-10", date_to: "2026-09-11", number_of_days: 2, state: "APPROVED", reason: "Family function" },
+    { employeeIndex: 2, leave_type_id: 2, date_from: "2026-09-15", date_to: "2026-09-15", number_of_days: 1, state: "TO_APPROVE", reason: "Not feeling well" },
+    { employeeIndex: 3, leave_type_id: 3, date_from: "2026-09-08", date_to: "2026-09-10", number_of_days: 3, state: "REFUSED", reason: "Personal work" },
+    { employeeIndex: 4, leave_type_id: 1, date_from: "2026-09-21", date_to: "2026-09-24", number_of_days: 4, state: "TO_APPROVE", reason: "Travel" },
+    { employeeIndex: 0, leave_type_id: 2, date_from: "2026-09-07", date_to: "2026-09-07", number_of_days: 1, state: "APPROVED", reason: "Doctor's appointment" },
+  ];
+
+  for (const lr of LEAVE_REQUESTS) {
+    const employee = employees[lr.employeeIndex];
+    const existing = await prisma.leaveRequest.findFirst({ where: { employee_id: employee.id } });
+    if (existing) continue;
+
+    await prisma.leaveRequest.create({
+      data: {
+        employee_id: employee.id,
+        leave_type_id: lr.leave_type_id,
+        date_from: new Date(lr.date_from),
+        date_to: new Date(lr.date_to),
+        number_of_days: lr.number_of_days,
+        state: lr.state,
+        approver_id: lr.state === "TO_APPROVE" ? null : employees[0].id,
+        reason: lr.reason ?? null,
+      },
+    });
+
+    if (lr.state === "APPROVED") {
+      const allocation = await prisma.leaveAllocation.findFirst({
+        where: { employee_id: employee.id, leave_type_id: lr.leave_type_id },
+      });
+      if (allocation) {
+        await prisma.leaveAllocation.update({
+          where: { id: allocation.id },
+          data: { number_of_days: { decrement: lr.number_of_days } },
+        });
+      }
     }
   }
 
